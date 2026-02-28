@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login | Nexus IT</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container" style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+        <div class="auth-container">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <i class="fa-solid fa-satellite-dish"
+                    style="font-size: 2.5rem; color: var(--accent-primary); margin-bottom: 1rem;"></i>
+                <h2>Admin Authentication</h2>
+                <p style="color: var(--text-secondary);">Sign in to access the helpdesk dashboard</p>
+            </div>
+
+            <div id="loginAlert" class="alert"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <div style="position: relative;">
+                        <i class="fa-solid fa-user"
+                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                        <input type="text" id="username" name="username" placeholder="administrator"
+                            style="padding-left: 2.5rem;" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div style="position: relative;">
+                        <i class="fa-solid fa-lock"
+                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                        <input type="password" id="password" name="password" placeholder="••••••••"
+                            style="padding-left: 2.5rem;" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    Log In <i class="fa-solid fa-arrow-right" style="margin-left: 0.5rem;"></i>
+                </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <a href="index.html" style="color: var(--text-secondary); text-decoration: none; font-size: 0.875rem;">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Support Form
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+
+</html>
