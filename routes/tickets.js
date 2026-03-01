@@ -2,6 +2,35 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+
+// Secure multer configuration with sanitization, size limit, and MIME whitelist
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        // Store uploads outside public directory for safety
+        cb(null, path.join(__dirname, '..', 'uploads'));
+    },
+    filename: (req, file, cb) => {
+        // Sanitize filename and prepend timestamp to avoid collisions
+        const safeBase = path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
+        const timestamp = Date.now();
+        cb(null, `${timestamp}_${safeBase}`);
+    }
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
+    fileFilter: (req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'application/pdf'];
+        if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.'), false);
+        }
+    }
+});
 
 // Middleware to protect admin routes
 const authenticate = (req, res, next) => {
@@ -30,26 +59,29 @@ const authenticate = (req, res, next) => {
     });
 };
 
-// User Form: Submit a ticket
-router.post('/', async (req, res) => {
+// User Form: Submit a ticket (Allow one attachment)
+router.post('/', upload.single('attachment'), async (req, res) => {
     const { name, department, title, description, status } = req.body;
     if (!name || !department || !title || !description) {
         return res.status(400).json({ success: false, error: 'All fields are required' });
     }
 
     const ticketStatus = status || 'Open';
+    const attachmentPath = req.file ? `/uploads/${req.file.filename}` : null;
 
     try {
         const [result] = await db.execute(
-            'INSERT INTO tickets (name, department, title, description, status) VALUES (?, ?, ?, ?, ?)',
-            [name, department, title, description, ticketStatus]
+            'INSERT INTO tickets (name, department, title, description, status, attachment_path) VALUES (?, ?, ?, ?, ?, ?)',
+            [name, department, title, description, ticketStatus, attachmentPath]
         );
         res.status(201).json({ success: true, ticketId: result.insertId });
     } catch (error) {
-        console.error('Error creating ticket:', error);
-        res.status(500).json({ success: false, error: 'Database error' });
+        console.error('Error creating ticket - FULL ERROR:', error);
+        res.status(500).json({ success: false, error: 'Database error', details: error.message });
     }
 });
+
+console.log('Tickets route logic initialized');
 
 // Admin Dashboard: View all tickets
 router.get('/', authenticate, async (req, res) => {

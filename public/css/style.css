@@ -6,22 +6,22 @@
   --bg-tertiary: #252a40;
   --text-primary: #ffffff;
   --text-secondary: #a0aabf;
-  
+
   --accent-primary: #6366f1;
   --accent-hover: #4f46e5;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
-  
+
   --glass-bg: rgba(26, 29, 45, 0.7);
   --glass-border: rgba(255, 255, 255, 0.08);
   --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-  
+
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  
+
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -55,7 +55,10 @@ body::before {
 }
 
 /* Typography */
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -68,7 +71,8 @@ h1, h2, h3, h4 {
   width: 100%;
 }
 
-.auth-container, .form-container {
+.auth-container,
+.form-container {
   max-width: 480px;
   margin: 4rem auto;
   padding: 2.5rem;
@@ -131,7 +135,9 @@ label {
   margin-bottom: 0.5rem;
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   width: 100%;
   background: var(--bg-tertiary);
   border: 1px solid var(--glass-border);
@@ -143,7 +149,9 @@ input, select, textarea {
   transition: var(--transition);
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   outline: none;
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
@@ -293,6 +301,8 @@ tbody tr:hover {
   width: 100%;
   max-width: 600px;
   padding: 2rem;
+  max-height: 90vh;
+  overflow-y: auto;
   transform: translateY(20px) scale(0.95);
   transition: var(--transition);
 }
@@ -336,7 +346,7 @@ tbody tr:hover {
   gap: 1.5rem;
   margin-bottom: 1.5rem;
   padding: 1rem;
-  background: rgba(0,0,0,0.2);
+  background: rgba(0, 0, 0, 0.2);
   border-radius: var(--radius-sm);
 }
 

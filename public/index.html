@@ -32,7 +32,7 @@
       <form id="ticketForm">
         <div class="form-group">
           <label for="name">Full Name</label>
-          <input type="text" id="name" name="name" placeholder="E.g., John Doe" required>
+          <input type="text" id="name" name="name" placeholder="E.g., Your Name" required>
         </div>
 
         <div class="form-group">
@@ -43,7 +43,7 @@
             <option value="Support">Support</option>
             <option value="HR">HR</option>
             <option value="MIS">MIS</option>
-            <option value="BA">BA (Business Analyst)</option>
+            <option value="BA">BA</option>
             <option value="Marketing">Marketing</option>
             <option value="Finance">Finance</option>
           </select>
@@ -58,6 +58,13 @@
           <label for="description">Detailed Description</label>
           <textarea id="description" name="description" rows="5"
             placeholder="Describe what went wrong or what you need help with..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="attachment">Attachment (Optional)</label>
+          <input type="file" id="attachment" name="attachment" accept="image/*,.pdf,.doc,.docx,.txt">
+          <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Upload a screenshot or
+            document (Max 5MB)</p>
         </div>
 
         <button type="submit" class="btn btn-primary btn-block">

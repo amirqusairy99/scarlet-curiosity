@@ -35,3 +35,4 @@ router.post('/login', async (req, res) => {
 });
 
 module.exports = router;
+console.log('Auth logic initialized');

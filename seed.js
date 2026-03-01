@@ -36,6 +36,7 @@ const createTables = async () => {
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
         status ENUM('Open', 'In Progress', 'Resolved') DEFAULT 'Open',
+        attachment_path VARCHAR(255) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       );
@@ -43,7 +44,7 @@ const createTables = async () => {
 
     // Create default admin user
     const adminUser = 'administrator';
-    const adminPass = 'kentut123';
+    const adminPass = 'misdashboard9090';
     const hash = await bcrypt.hash(adminPass, 10);
 
     const [existing] = await connection.query('SELECT * FROM users WHERE username = ?', [adminUser]);

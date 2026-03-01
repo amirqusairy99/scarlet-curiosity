@@ -1,4 +1,4 @@
-const API_URL = 'http://10.214.239.142:3000/api';
+const API_URL = '/api';
 
 // Utility to escape HTML and prevent XSS
 function escapeHTML(str) {
@@ -41,18 +41,21 @@ if (ticketForm) {
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Submitting...';
         btn.disabled = true;
 
-        const data = {
-            name: document.getElementById('name').value,
-            department: document.getElementById('department').value,
-            title: document.getElementById('title').value,
-            description: document.getElementById('description').value
-        };
+        const formData = new FormData();
+        formData.append('name', document.getElementById('name').value);
+        formData.append('department', document.getElementById('department').value);
+        formData.append('title', document.getElementById('title').value);
+        formData.append('description', document.getElementById('description').value);
+
+        const attachment = document.getElementById('attachment').files[0];
+        if (attachment) {
+            formData.append('attachment', attachment);
+        }
 
         try {
             const response = await fetch(`${API_URL}/tickets`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: formData // No Content-Type header, browser sets it for FormData
             });
 
             const result = await response.json();
@@ -201,8 +204,35 @@ function openEditModal(ticket) {
     document.getElementById('modalDescriptionInput').value = ticket.description;
     document.getElementById('modalStatus').value = ticket.status;
 
-    document.getElementById('deleteBtn').style.display = 'block';
     document.getElementById('saveBtn').textContent = 'Save Changes';
+
+    // Handle Attachment Display
+    const attachmentSection = document.getElementById('attachmentSection');
+    const attachmentDisplay = document.getElementById('attachmentDisplay');
+
+    if (ticket.attachment_path) {
+        attachmentSection.style.display = 'block';
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(ticket.attachment_path);
+        const fullUrl = `${API_URL.replace('/api', '')}${ticket.attachment_path}`;
+
+        if (isImage) {
+            attachmentDisplay.innerHTML = `
+                <a href="${fullUrl}" target="_blank" class="attachment-preview-container">
+                    <img src="${fullUrl}" alt="Attachment Preview" style="max-width: 100%; border-radius: var(--radius-md); border: 1px solid var(--glass-border); margin-bottom: 0.5rem; display: block;">
+                    <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-up-right-from-square"></i> View Full Image</span>
+                </a>
+            `;
+        } else {
+            attachmentDisplay.innerHTML = `
+                <a href="${fullUrl}" target="_blank" class="btn btn-secondary">
+                    <i class="fa-solid fa-file-arrow-down"></i> Download Attachment (${ticket.attachment_path.split('.').pop().toUpperCase()})
+                </a>
+            `;
+        }
+    } else {
+        attachmentSection.style.display = 'none';
+        attachmentDisplay.innerHTML = '';
+    }
 
     document.getElementById('ticketModal').classList.add('active');
 }
@@ -217,6 +247,8 @@ function openCreateModal() {
 
     document.getElementById('deleteBtn').style.display = 'none';
     document.getElementById('saveBtn').textContent = 'Create Ticket';
+
+    document.getElementById('attachmentSection').style.display = 'none';
 
     document.getElementById('ticketModal').classList.add('active');
 }
