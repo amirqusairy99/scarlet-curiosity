@@ -4,6 +4,46 @@ const db = require('../db');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
+const nodemailer = require('nodemailer');
+const fs = require('fs');                 // <<<< HERE
+const handlebars = require('handlebars');
+const crypto = require('crypto');
+
+const sendTicketNotification = async (toEmail, ticketId, title, ticketUrl, status = 'OPEN') => {
+  try {
+    // Read template file
+    const templateSource = fs.readFileSync(path.join(__dirname, '../emails/ticketCreated.hbs'), 'utf8');
+    
+    // Compile Handlebars template
+    const template = handlebars.compile(templateSource);
+    
+    // Generate HTML with dynamic data
+    const html = template({ ticketId, title, status, ticketUrl });
+
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST || 's1364.securessl.net',
+      port: parseInt(process.env.EMAIL_PORT || '587'),
+      secure: process.env.EMAIL_SECURE === 'true',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    await transporter.sendMail({
+      from: `"MIS Ticket System" <${process.env.EMAIL_USER}>`,
+      to: toEmail,
+      subject: `Ticket #${ticketId} Created Successfully`,
+      html
+    });
+
+    console.log("Email sent successfully");
+  } catch (error) {
+    console.error("Email sending failed:", error);
+    throw error;
+  }
+};
 
 // Secure multer configuration with sanitization, size limit, and MIME whitelist
 const storage = multer.diskStorage({
@@ -61,23 +101,55 @@ const authenticate = (req, res, next) => {
 
 // User Form: Submit a ticket (Allow one attachment)
 router.post('/', upload.single('attachment'), async (req, res) => {
-    const { name, department, title, description, status } = req.body;
-    if (!name || !department || !title || !description) {
+    const { name, email, department, title, description, status } = req.body; // <-- added email
+    if (!name || !email || !department || !title || !description) {
         return res.status(400).json({ success: false, error: 'All fields are required' });
     }
 
     const ticketStatus = status || 'Open';
     const attachmentPath = req.file ? `/uploads/${req.file.filename}` : null;
+    const token = crypto.randomBytes(32).toString('hex');
 
     try {
         const [result] = await db.execute(
-            'INSERT INTO tickets (name, department, title, description, status, attachment_path) VALUES (?, ?, ?, ?, ?, ?)',
-            [name, department, title, description, ticketStatus, attachmentPath]
+            'INSERT INTO tickets (name, email, department, title, description, status, attachment_path, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [name, email, department, title, description, ticketStatus, attachmentPath, token]
         );
-        res.status(201).json({ success: true, ticketId: result.insertId });
+
+        const ticketUrl = `${req.protocol}://${req.get('host')}/ticket-status.html?token=${token}`;
+
+        sendTicketNotification(email, result.insertId, title, ticketUrl)
+            .catch(err => console.error('Failed to send email:', err));
+
+        res.status(201).json({ success: true, ticketId: result.insertId, token });
     } catch (error) {
-        console.error('Error creating ticket - FULL ERROR:', error);
+        console.error('Error creating ticket:', error);
         res.status(500).json({ success: false, error: 'Database error', details: error.message });
+    }
+});
+
+// Public Route: View ticket by token (unguessable link)
+router.get('/public/:token', async (req, res) => {
+    const { token } = req.params;
+
+    if (!token) {
+        return res.status(400).json({ success: false, error: 'Token is required' });
+    }
+
+    try {
+        const [rows] = await db.execute(
+            'SELECT id, name, email, department, title, description, status, attachment_path, created_at, updated_at FROM tickets WHERE token = ?',
+            [token]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Ticket not found' });
+        }
+
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('Error fetching public ticket:', error);
+        res.status(500).json({ success: false, error: 'Database error' });
     }
 });
 

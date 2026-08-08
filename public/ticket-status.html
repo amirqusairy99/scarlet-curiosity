@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ticket Status | MIS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+  <header>
+    <div class="nav-content">
+      <a href="index.html" class="logo">
+        <i class="fa-solid fa-satellite-dish"></i>
+        MIS <span>Ticket Tracker</span>
+      </a>
+      <nav style="display: flex; gap: 1rem; align-items: center;">
+        <button id="themeToggle" class="btn-icon" aria-label="Toggle Theme">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+        <a href="index.html" class="btn btn-secondary btn-sm">Submit New Ticket</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="statusContainer" class="status-card">
+      <div class="loading-state">
+        <i class="fa-solid fa-spinner fa-spin fa-2xl" style="color: var(--accent-primary); margin-bottom: 1rem;"></i>
+        <p>Loading ticket status details...</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/main.js"></script>
+  <script src="js/status.js"></script>
+</body>
+
+</html>

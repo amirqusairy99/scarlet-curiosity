@@ -1,3 +1,48 @@
+// Theme Toggle Logic
+const initTheme = () => {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeIcon('dark');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+        updateThemeIcon('light');
+    }
+};
+
+const updateThemeIcon = (theme) => {
+    const icon = document.querySelector('#themeToggle i');
+    if (icon) {
+        if (theme === 'dark') {
+            icon.className = 'fa-solid fa-sun';
+        } else {
+            icon.className = 'fa-solid fa-moon';
+        }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+
+    const themeToggleBtn = document.getElementById('themeToggle');
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                updateThemeIcon('light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                updateThemeIcon('dark');
+            }
+        });
+    }
+});
+
 const API_URL = '/api';
 
 // Utility to escape HTML and prevent XSS
@@ -15,12 +60,12 @@ function escapeHTML(str) {
 function showAlert(elementId, message, type = 'success') {
     const alertEl = document.getElementById(elementId);
     if (!alertEl) return;
-    alertEl.textContent = message;
+    alertEl.innerHTML = message;
     alertEl.className = `alert alert-${type}`;
     alertEl.style.display = 'block';
     setTimeout(() => {
         alertEl.style.display = 'none';
-    }, 5000);
+    }, 15000); // Increased timeout to 15s to let user read/click link
 }
 
 // Format Date
@@ -43,6 +88,7 @@ if (ticketForm) {
 
         const formData = new FormData();
         formData.append('name', document.getElementById('name').value);
+        formData.append('email', document.getElementById('email').value);
         formData.append('department', document.getElementById('department').value);
         formData.append('title', document.getElementById('title').value);
         formData.append('description', document.getElementById('description').value);
@@ -60,7 +106,8 @@ if (ticketForm) {
 
             const result = await response.json();
             if (response.ok) {
-                showAlert('submitAlert', `Success! Your ticket #${result.ticketId} has been submitted.`, 'success');
+                const trackUrl = `${window.location.origin}/ticket-status.html?token=${result.token}`;
+                showAlert('submitAlert', `Success! Your ticket #${result.ticketId} has been submitted. <br><a href="${trackUrl}" target="_blank" style="color: var(--accent-primary); text-decoration: underline; font-weight: 600;">Track Ticket Status here</a>`, 'success');
                 ticketForm.reset();
             } else {
                 showAlert('submitAlert', result.error || result.message || 'Failed to submit ticket', 'error');
@@ -199,12 +246,17 @@ function openEditModal(ticket) {
 
     document.getElementById('modalTitleText').textContent = `Edit Ticket #${ticket.id}`;
     document.getElementById('modalName').value = ticket.name;
+    document.getElementById('modalEmail').value = ticket.email || '';
     document.getElementById('modalDepartment').value = ticket.department;
     document.getElementById('modalTitleInput').value = ticket.title;
     document.getElementById('modalDescriptionInput').value = ticket.description;
     document.getElementById('modalStatus').value = ticket.status;
 
     document.getElementById('saveBtn').textContent = 'Save Changes';
+    
+    // Hide new attachment input during edit
+    const newAttachmentSection = document.getElementById('newAttachmentSection');
+    if (newAttachmentSection) newAttachmentSection.style.display = 'none';
 
     // Handle Attachment Display
     const attachmentSection = document.getElementById('attachmentSection');
@@ -249,6 +301,8 @@ function openCreateModal() {
     document.getElementById('saveBtn').textContent = 'Create Ticket';
 
     document.getElementById('attachmentSection').style.display = 'none';
+    const newAttachmentSection = document.getElementById('newAttachmentSection');
+    if (newAttachmentSection) newAttachmentSection.style.display = 'block';
 
     document.getElementById('ticketModal').classList.add('active');
 }
@@ -264,26 +318,51 @@ if (modalForm) {
     modalForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const token = localStorage.getItem('token');
-        const method = isEditMode ? 'PUT' : 'POST';
         const url = isEditMode ? `${API_URL}/tickets/${currentTicketId}` : `${API_URL}/tickets`;
+        
+        let fetchOptions = {};
 
-        const data = {
-            name: document.getElementById('modalName').value,
-            department: document.getElementById('modalDepartment').value,
-            title: document.getElementById('modalTitleInput').value,
-            description: document.getElementById('modalDescriptionInput').value,
-            status: document.getElementById('modalStatus').value
-        };
-
-        try {
-            const response = await fetch(url, {
-                method: method,
+        if (isEditMode) {
+            const data = {
+                name: document.getElementById('modalName').value,
+                department: document.getElementById('modalDepartment').value,
+                title: document.getElementById('modalTitleInput').value,
+                description: document.getElementById('modalDescriptionInput').value,
+                status: document.getElementById('modalStatus').value
+            };
+            fetchOptions = {
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(data)
-            });
+            };
+        } else {
+            const formData = new FormData();
+            formData.append('name', document.getElementById('modalName').value);
+            formData.append('email', document.getElementById('modalEmail').value);
+            formData.append('department', document.getElementById('modalDepartment').value);
+            formData.append('title', document.getElementById('modalTitleInput').value);
+            formData.append('description', document.getElementById('modalDescriptionInput').value);
+            formData.append('status', document.getElementById('modalStatus').value);
+            
+            const attachment = document.getElementById('modalAttachmentInput').files[0];
+            if (attachment) {
+                formData.append('attachment', attachment);
+            }
+            
+            fetchOptions = {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            };
+        }
+
+        try {
+            const response = await fetch(url, fetchOptions);
 
             if (response.ok) {
                 closeModal();

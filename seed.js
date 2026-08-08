@@ -32,11 +32,13 @@ const createTables = async () => {
       CREATE TABLE IF NOT EXISTS tickets (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
+        email VARCHAR(255) NOT NULL,
         department VARCHAR(50) NOT NULL,
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
         status ENUM('Open', 'In Progress', 'Resolved') DEFAULT 'Open',
         attachment_path VARCHAR(255) DEFAULT NULL,
+        token VARCHAR(64) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       );

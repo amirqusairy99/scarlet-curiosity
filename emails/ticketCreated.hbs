@@ -1,0 +1,119 @@
+<!-- emails/ticketCreated.hbs -->
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml"
+  xmlns:o="urn:schemas-microsoft-com:office:office">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!--[if mso]>
+  <style>table, td { border-collapse: collapse; } * { font-family: Arial, sans-serif !important; }</style>
+  <![endif]-->
+  <style>
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+    }
+  </style>
+</head>
+
+<body style="margin:0;padding:0;background:#e2e8f0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e2e8f0;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+
+        <table role="presentation" class="email-container" width="560" cellpadding="0" cellspacing="0" border="0"
+          style="width:560px;max-width:560px;background:#ffffff;border:1px solid #cbd5e1;border-radius:12px;">
+
+          <!-- Header -->
+          <tr>
+            <td style="padding:32px 40px 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td valign="top">
+                    <h1
+                      style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:#0f172a;">
+                      🎫 Ticket Confirmed</h1>
+                    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#475569;">Your
+                      request has been received and logged</p>
+                  </td>
+                  <td width="70" valign="top" align="right">
+                    <span
+                      style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#2563eb;font-weight:700;text-transform:uppercase;background-color:#eff6ff;border-radius:20px;padding:5px 10px;white-space:nowrap;">Open</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 40px;">
+              <div style="height:1px;line-height:1px;font-size:1px;background-color:#e2e8f0;">&nbsp;</div>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:24px 40px 32px;">
+
+              <p
+                style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#475569;text-transform:uppercase;font-weight:700;">
+                Ticket Number</p>
+              <p
+                style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:700;color:#2563eb;">
+                #{{ticketId}}</p>
+
+              <p
+                style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#475569;text-transform:uppercase;font-weight:700;">
+                Title</p>
+              <p
+                style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#0f172a;line-height:1.4;">
+                {{title}}</p>
+
+              <p
+                style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#475569;text-transform:uppercase;font-weight:700;">
+                Status</p>
+              <p style="margin:0 0 24px;">
+                <span
+                  style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#059669;font-weight:700;background-color:#ecfdf5;border-radius:6px;padding:3px 8px;">{{status}}</span>
+              </p>
+
+              <p
+                style="margin:0 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#334155;line-height:1.6;">
+                Our MIS support team has been notified and will reach out to you as soon as possible. Keep this ticket
+                number for your records.
+              </p>
+
+              <!-- CTA Button -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="#2563eb" style="background-color:#2563eb;border-radius:8px;">
+                    <a href="{{ticketUrl}}"
+                      style="display:inline-block;padding:12px 28px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">View
+                      Ticket Status</a>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td bgcolor="#f8fafc"
+              style="background-color:#f8fafc;padding:20px 40px;text-align:center;border-top:1px solid #e2e8f0;">
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#475569;">MIS Support
+                System &middot; Automated Notification</p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+
+</html>
