@@ -186,16 +186,22 @@
                 </div>
 
                 <div id="newAttachmentSection" class="form-group" style="display: none;">
-                    <label for="modalAttachmentInput">Upload Attachment (Optional)</label>
-                    <input type="file" id="modalAttachmentInput" accept="image/*,.pdf,.doc,.docx,.txt">
-                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Upload a screenshot or document (Max 5MB)</p>
+                    <label for="modalAttachmentInput">Add More Attachments (Optional)</label>
+                    <input type="file" id="modalAttachmentInput" accept="image/*,.pdf,.doc,.docx,.txt" multiple>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Upload screenshots or documents (JPEG, PNG, PDF; max 5MB each). Existing attachments are kept. In Create mode files upload with the ticket; in Edit mode use the "Add Files" button.</p>
                 </div>
 
                 <div id="attachmentSection" class="form-group" style="display: none;">
-                    <label>Attachment</label>
+                    <label>Attachments</label>
                     <div id="attachmentDisplay" style="margin-top: 0.5rem;">
-                        <!-- Attachment link or preview will be inserted here -->
+                        <!-- Attachment links will be inserted here -->
                     </div>
+                </div>
+
+                <div id="addAttachmentsSection" style="display: none; margin-top: 0.25rem;">
+                    <button type="button" id="addAttachmentsBtn" class="btn btn-secondary btn-sm">
+                        <i class="fa-solid fa-paperclip" style="margin-right: 0.5rem;"></i> Add Selected Files
+                    </button>
                 </div>
 
                 <div

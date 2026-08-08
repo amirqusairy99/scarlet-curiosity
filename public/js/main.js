@@ -94,9 +94,10 @@ if (ticketForm) {
         formData.append('title', document.getElementById('title').value);
         formData.append('description', document.getElementById('description').value);
 
-        const attachment = document.getElementById('attachment').files[0];
-        if (attachment) {
-            formData.append('attachment', attachment);
+        const attachmentInput = document.getElementById('attachment');
+        const files = attachmentInput ? attachmentInput.files : [];
+        for (const file of files) {
+            formData.append('attachments', file);
         }
 
         try {
@@ -399,40 +400,106 @@ function openEditModal(ticket) {
     document.getElementById('modalStatus').value = ticket.status;
 
     document.getElementById('saveBtn').textContent = 'Save Changes';
-    
-    // Hide new attachment input during edit
-    const newAttachmentSection = document.getElementById('newAttachmentSection');
-    if (newAttachmentSection) newAttachmentSection.style.display = 'none';
 
-    // Handle Attachment Display
+    // Show attachment upload input in edit mode so admins can add a new attachment
+    const newAttachmentSection = document.getElementById('newAttachmentSection');
+    if (newAttachmentSection) {
+        newAttachmentSection.style.display = 'block';
+    }
+    // Reset the file input for a fresh pick
+    const modalAttachmentInput = document.getElementById('modalAttachmentInput');
+    if (modalAttachmentInput) modalAttachmentInput.value = '';
+
+    // Render the ticket's attachments (multiple) with delete buttons
     const attachmentSection = document.getElementById('attachmentSection');
     const attachmentDisplay = document.getElementById('attachmentDisplay');
+    const addAttachmentsSection = document.getElementById('addAttachmentsSection');
 
-    if (ticket.attachment_path) {
+    renderAttachments(ticket.attachments || []);
+    if (ticket.attachments && ticket.attachments.length > 0) {
         attachmentSection.style.display = 'block';
-        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(ticket.attachment_path);
-        const fullUrl = `${API_URL.replace('/api', '')}${ticket.attachment_path}`;
-
-        if (isImage) {
-            attachmentDisplay.innerHTML = `
-                <a href="${fullUrl}" target="_blank" class="attachment-preview-container">
-                    <img src="${fullUrl}" alt="Attachment Preview" style="max-width: 100%; border-radius: var(--radius-md); border: 1px solid var(--glass-border); margin-bottom: 0.5rem; display: block;">
-                    <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-up-right-from-square"></i> View Full Image</span>
-                </a>
-            `;
-        } else {
-            attachmentDisplay.innerHTML = `
-                <a href="${fullUrl}" target="_blank" class="btn btn-secondary">
-                    <i class="fa-solid fa-file-arrow-down"></i> Download Attachment (${ticket.attachment_path.split('.').pop().toUpperCase()})
-                </a>
-            `;
-        }
     } else {
         attachmentSection.style.display = 'none';
-        attachmentDisplay.innerHTML = '';
     }
 
+    // In edit mode, allow adding more attachments via the separate button
+    if (addAttachmentsSection) addAttachmentsSection.style.display = 'block';
+
     document.getElementById('ticketModal').classList.add('active');
+}
+
+// Render a list of attachment items with view/delete controls
+function renderAttachments(attachments) {
+    const attachmentDisplay = document.getElementById('attachmentDisplay');
+    if (!attachmentDisplay) return;
+
+    if (!attachments || attachments.length === 0) {
+        attachmentDisplay.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.875rem;">No attachments on this ticket.</p>';
+        return;
+    }
+
+    const baseUrl = API_URL.replace('/api', '');
+    let html = '';
+    attachments.forEach(att => {
+        const fullUrl = `${baseUrl}${att.file_path}`;
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(att.file_path);
+        const displayName = att.original_name || att.file_path.split('/').pop();
+
+        if (isImage) {
+            html += `
+                <div class="attachment-item" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border: 1px solid var(--glass-border); border-radius: var(--radius-md); margin-bottom: 0.5rem;">
+                    <img src="${fullUrl}" alt="Attachment" style="width: 48px; height: 48px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--glass-border);">
+                    <a href="${fullUrl}" target="_blank" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); text-decoration: none;">${escapeHTML(displayName)}</a>
+                    <button class="btn btn-secondary btn-sm" onclick="deleteAttachment(${att.id})" title="Remove" style="border-color: var(--danger); color: var(--danger);">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+        } else {
+            const ext = (att.file_path.split('.').pop() || 'file').toUpperCase();
+            html += `
+                <div class="attachment-item" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border: 1px solid var(--glass-border); border-radius: var(--radius-md); margin-bottom: 0.5rem;">
+                    <i class="fa-solid fa-file-arrow-down" style="color: var(--accent-primary); font-size: 1.25rem;"></i>
+                    <a href="${fullUrl}" target="_blank" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); text-decoration: none;">${escapeHTML(displayName)} <span style="color: var(--text-secondary); font-size: 0.75rem;">(${ext})</span></a>
+                    <button class="btn btn-secondary btn-sm" onclick="deleteAttachment(${att.id})" title="Remove" style="border-color: var(--danger); color: var(--danger);">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+        }
+    });
+    attachmentDisplay.innerHTML = html;
+}
+
+// Delete a single attachment from the current ticket
+async function deleteAttachment(attachmentId) {
+    if (!currentTicketId) return;
+    if (!confirm('Remove this attachment? This cannot be undone.')) return;
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/tickets/${currentTicketId}/attachments/${attachmentId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            showAlert('dashboardAlert', 'Attachment removed', 'success');
+            // Refresh ticket data to update the modal list
+            const t = await fetchSingleTicket(currentTicketId);
+            if (t) renderAttachments(t.attachments || []);
+        } else {
+            showAlert('dashboardAlert', 'Failed to remove attachment', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting attachment:', error);
+        showAlert('dashboardAlert', 'Network error', 'error');
+    }
+}
+
+// Fetch a single ticket from the current page data
+function fetchSingleTicket(id) {
+    const t = allTickets.find(x => x.id === id);
+    return Promise.resolve(t || null);
 }
 
 function openCreateModal() {
@@ -450,6 +517,8 @@ function openCreateModal() {
     document.getElementById('attachmentSection').style.display = 'none';
     const newAttachmentSection = document.getElementById('newAttachmentSection');
     if (newAttachmentSection) newAttachmentSection.style.display = 'block';
+    const addAttachmentsSection = document.getElementById('addAttachmentsSection');
+    if (addAttachmentsSection) addAttachmentsSection.style.display = 'none';
 
     document.getElementById('ticketModal').classList.add('active');
 }
@@ -470,6 +539,7 @@ if (modalForm) {
         let fetchOptions = {};
 
         if (isEditMode) {
+            // Edit updates ticket fields only (JSON). Attachments are added separately.
             const data = {
                 name: document.getElementById('modalName').value,
                 department: document.getElementById('modalDepartment').value,
@@ -495,12 +565,12 @@ if (modalForm) {
             formData.append('title', document.getElementById('modalTitleInput').value);
             formData.append('description', document.getElementById('modalDescriptionInput').value);
             formData.append('status', document.getElementById('modalStatus').value);
-            
-            const attachment = document.getElementById('modalAttachmentInput').files[0];
-            if (attachment) {
-                formData.append('attachment', attachment);
+
+            const files = document.getElementById('modalAttachmentInput').files;
+            for (const file of files) {
+                formData.append('attachments', file);
             }
-            
+
             fetchOptions = {
                 method: 'POST',
                 headers: {
@@ -524,6 +594,61 @@ if (modalForm) {
         } catch (error) {
             console.error('Error saving ticket:', error);
             showAlert('dashboardAlert', 'Network error', 'error');
+        }
+    });
+}
+
+// Add selected attachments to an existing ticket (edit mode)
+const addAttachmentsBtn = document.getElementById('addAttachmentsBtn');
+if (addAttachmentsBtn) {
+    addAttachmentsBtn.addEventListener('click', async () => {
+        if (!currentTicketId) return;
+        const fileInput = document.getElementById('modalAttachmentInput');
+        const files = fileInput ? fileInput.files : [];
+        if (!files.length) {
+            showAlert('dashboardAlert', 'Select at least one file to add', 'error');
+            return;
+        }
+
+        const token = localStorage.getItem('token');
+        const btn = addAttachmentsBtn;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Adding...';
+        btn.disabled = true;
+
+        const formData = new FormData();
+        for (const file of files) {
+            formData.append('attachments', file);
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/tickets/${currentTicketId}/attachments`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                showAlert('dashboardAlert', `${result.message || 'Attachments added'}`, 'success');
+                // Update the modal attachment list with the new full set
+                renderAttachments(result.attachments || []);
+                const attachmentSection = document.getElementById('attachmentSection');
+                if (attachmentSection && result.attachments && result.attachments.length > 0) {
+                    attachmentSection.style.display = 'block';
+                }
+                if (fileInput) fileInput.value = '';
+                fetchTickets(currentPage);
+            } else {
+                const err = await response.json();
+                showAlert('dashboardAlert', err.error || 'Failed to add attachments', 'error');
+            }
+        } catch (error) {
+            console.error('Error adding attachments:', error);
+            showAlert('dashboardAlert', 'Network error', 'error');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         }
     });
 }

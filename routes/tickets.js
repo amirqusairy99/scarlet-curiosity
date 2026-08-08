@@ -61,7 +61,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit per file
     fileFilter: (req, file, cb) => {
         const allowed = ['image/jpeg', 'image/png', 'application/pdf'];
         if (allowed.includes(file.mimetype)) {
@@ -71,6 +71,33 @@ const upload = multer({
         }
     }
 });
+
+// Store one or more uploaded files as attachment rows for a ticket
+const storeAttachments = async (ticketId, files) => {
+    if (!files || files.length === 0) return;
+    for (const file of files) {
+        await db.execute(
+            'INSERT INTO attachments (ticket_id, file_path, original_name) VALUES (?, ?, ?)',
+            [ticketId, `/uploads/${file.filename}`, file.originalname]
+        );
+    }
+};
+
+// Fetch all attachments for a set of ticket ids
+const fetchAttachments = async (ticketIds) => {
+    if (!ticketIds || ticketIds.length === 0) return {};
+    const placeholders = ticketIds.map(() => '?').join(',');
+    const [rows] = await db.execute(
+        `SELECT id, ticket_id, file_path, original_name, created_at FROM attachments WHERE ticket_id IN (${placeholders}) ORDER BY id ASC`,
+        ticketIds
+    );
+    const map = {};
+    rows.forEach(a => {
+        if (!map[a.ticket_id]) map[a.ticket_id] = [];
+        map[a.ticket_id].push(a);
+    });
+    return map;
+};
 
 // Middleware to protect admin routes
 const authenticate = (req, res, next) => {
@@ -99,22 +126,24 @@ const authenticate = (req, res, next) => {
     });
 };
 
-// User Form: Submit a ticket (Allow one attachment)
-router.post('/', upload.single('attachment'), async (req, res) => {
+// User Form: Submit a ticket (Allow multiple attachments, up to 5)
+router.post('/', upload.array('attachments', 5), async (req, res) => {
     const { name, email, department, title, description, priority, status } = req.body;
     if (!name || !email || !department || !title || !description || !priority) {
         return res.status(400).json({ success: false, error: 'All fields are required' });
     }
 
     const ticketStatus = status || 'Open';
-    const attachmentPath = req.file ? `/uploads/${req.file.filename}` : null;
     const token = crypto.randomBytes(32).toString('hex');
 
     try {
         const [result] = await db.execute(
-            'INSERT INTO tickets (name, email, department, title, description, priority, status, attachment_path, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [name, email, department, title, description, priority, ticketStatus, attachmentPath, token]
+            'INSERT INTO tickets (name, email, department, title, description, priority, status, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [name, email, department, title, description, priority, ticketStatus, token]
         );
+
+        // Store all uploaded attachments as separate rows
+        await storeAttachments(result.insertId, req.files);
 
         const ticketUrl = `${req.protocol}://${req.get('host')}/ticket-status.html?token=${token}`;
 
@@ -138,7 +167,7 @@ router.get('/public/:token', async (req, res) => {
 
     try {
         const [rows] = await db.execute(
-            'SELECT id, name, email, department, title, description, priority, status, attachment_path, created_at, updated_at FROM tickets WHERE token = ?',
+            'SELECT id, name, email, department, title, description, priority, status, created_at, updated_at FROM tickets WHERE token = ?',
             [token]
         );
 
@@ -146,7 +175,11 @@ router.get('/public/:token', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Ticket not found' });
         }
 
-        res.json(rows[0]);
+        const ticket = rows[0];
+        const attMap = await fetchAttachments([ticket.id]);
+        ticket.attachments = attMap[ticket.id] || [];
+
+        res.json(ticket);
     } catch (error) {
         console.error('Error fetching public ticket:', error);
         res.status(500).json({ success: false, error: 'Database error' });
@@ -185,6 +218,11 @@ router.get('/', authenticate, async (req, res) => {
             params
         );
 
+        // Attach each ticket's attachments
+        const ids = tickets.map(t => t.id);
+        const attMap = await fetchAttachments(ids);
+        tickets.forEach(t => { t.attachments = attMap[t.id] || []; });
+
         res.json({
             success: true,
             tickets,
@@ -201,7 +239,7 @@ router.get('/', authenticate, async (req, res) => {
     }
 });
 
-// Admin Dashboard: Update ticket details (full CRUD)
+// Admin Dashboard: Update ticket details (fields only, attachments managed separately)
 router.put('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     const { name, department, title, description, priority, status } = req.body;
@@ -219,6 +257,46 @@ router.put('/:id', authenticate, async (req, res) => {
         res.json({ success: true, message: 'Ticket updated' });
     } catch (error) {
         console.error('Error updating ticket:', error);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// Admin Dashboard: Add more attachments to an existing ticket (preserves existing ones)
+router.post('/:id/attachments', authenticate, upload.array('attachments', 5), async (req, res) => {
+    const { id } = req.params;
+
+    if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ success: false, error: 'No files uploaded' });
+    }
+
+    try {
+        // Ensure the ticket exists
+        const [rows] = await db.execute('SELECT id FROM tickets WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ success: false, error: 'Ticket not found' });
+
+        await storeAttachments(parseInt(id, 10), req.files);
+
+        const attMap = await fetchAttachments([parseInt(id, 10)]);
+        res.json({ success: true, message: `${req.files.length} attachment(s) added`, attachments: attMap[parseInt(id, 10)] || [] });
+    } catch (error) {
+        console.error('Error adding attachments:', error);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// Admin Dashboard: Delete a specific attachment
+router.delete('/:id/attachments/:attachmentId', authenticate, async (req, res) => {
+    const { id, attachmentId } = req.params;
+
+    try {
+        const [result] = await db.execute(
+            'DELETE FROM attachments WHERE id = ? AND ticket_id = ?',
+            [attachmentId, id]
+        );
+        if (result.affectedRows === 0) return res.status(404).json({ success: false, error: 'Attachment not found' });
+        res.json({ success: true, message: 'Attachment removed' });
+    } catch (error) {
+        console.error('Error deleting attachment:', error);
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });

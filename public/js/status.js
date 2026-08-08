@@ -39,14 +39,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             statusClass = 'badge-resolved';
         }
 
-        const attachmentHtml = ticket.attachment_path 
-            ? `<div class="detail-item" style="grid-column: span 2;">
-                 <label>Attachment</label>
-                 <a href="${escapeHTML(ticket.attachment_path)}" target="_blank" class="attachment-link">
-                   <i class="fa-solid fa-paperclip"></i> View Attached File
-                 </a>
-               </div>`
-            : '';
+        let attachmentsHtml = '';
+        if (ticket.attachments && ticket.attachments.length > 0) {
+            const links = ticket.attachments.map(att => {
+                const name = att.original_name || att.file_path.split('/').pop();
+                return `<li style="margin-bottom: 0.5rem;">
+                    <a href="${escapeHTML(att.file_path)}" target="_blank" class="attachment-link">
+                        <i class="fa-solid fa-paperclip"></i> ${escapeHTML(name)}
+                    </a>
+                </li>`;
+            }).join('');
+            attachmentsHtml = `<div class="detail-item" style="grid-column: span 2;">
+                 <label>Attachments (${ticket.attachments.length})</label>
+                 <ul style="list-style: none; padding: 0; margin: 0;">${links}</ul>
+               </div>`;
+        }
 
         container.innerHTML = `
             <div class="status-header">
@@ -74,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <label>Date Created</label>
                     <span>${formatDate(ticket.created_at)}</span>
                 </div>
-                ${attachmentHtml}
+                ${attachmentsHtml}
             </div>
 
             <div style="margin-top: 2rem;">
