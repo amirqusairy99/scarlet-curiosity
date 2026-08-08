@@ -265,6 +265,21 @@ textarea:focus {
   color: var(--success);
 }
 
+.badge-high {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.badge-medium {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.badge-low {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
 /* Tables for Dashboard */
 .table-container {
   background: var(--bg-secondary);

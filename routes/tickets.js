@@ -101,8 +101,8 @@ const authenticate = (req, res, next) => {
 
 // User Form: Submit a ticket (Allow one attachment)
 router.post('/', upload.single('attachment'), async (req, res) => {
-    const { name, email, department, title, description, status } = req.body; // <-- added email
-    if (!name || !email || !department || !title || !description) {
+    const { name, email, department, title, description, priority, status } = req.body;
+    if (!name || !email || !department || !title || !description || !priority) {
         return res.status(400).json({ success: false, error: 'All fields are required' });
     }
 
@@ -112,8 +112,8 @@ router.post('/', upload.single('attachment'), async (req, res) => {
 
     try {
         const [result] = await db.execute(
-            'INSERT INTO tickets (name, email, department, title, description, status, attachment_path, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [name, email, department, title, description, ticketStatus, attachmentPath, token]
+            'INSERT INTO tickets (name, email, department, title, description, priority, status, attachment_path, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [name, email, department, title, description, priority, ticketStatus, attachmentPath, token]
         );
 
         const ticketUrl = `${req.protocol}://${req.get('host')}/ticket-status.html?token=${token}`;
@@ -138,7 +138,7 @@ router.get('/public/:token', async (req, res) => {
 
     try {
         const [rows] = await db.execute(
-            'SELECT id, name, email, department, title, description, status, attachment_path, created_at, updated_at FROM tickets WHERE token = ?',
+            'SELECT id, name, email, department, title, description, priority, status, attachment_path, created_at, updated_at FROM tickets WHERE token = ?',
             [token]
         );
 
@@ -169,7 +169,7 @@ router.get('/', authenticate, async (req, res) => {
 // Admin Dashboard: Update ticket details (full CRUD)
 router.put('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
-    const { name, department, title, description, status } = req.body;
+    const { name, department, title, description, priority, status } = req.body;
 
     if (status && !['Open', 'In Progress', 'Resolved'].includes(status)) {
         return res.status(400).json({ error: 'Invalid status' });
@@ -177,8 +177,8 @@ router.put('/:id', authenticate, async (req, res) => {
 
     try {
         const [result] = await db.execute(
-            'UPDATE tickets SET name = ?, department = ?, title = ?, description = ?, status = ? WHERE id = ?',
-            [name, department, title, description, status, id]
+            'UPDATE tickets SET name = ?, department = ?, title = ?, description = ?, priority = ?, status = ? WHERE id = ?',
+            [name, department, title, description, priority, status, id]
         );
         if (result.affectedRows === 0) return res.status(404).json({ success: false, error: 'Ticket not found' });
         res.json({ success: true, message: 'Ticket updated' });

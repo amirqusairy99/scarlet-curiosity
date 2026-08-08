@@ -90,6 +90,7 @@ if (ticketForm) {
         formData.append('name', document.getElementById('name').value);
         formData.append('email', document.getElementById('email').value);
         formData.append('department', document.getElementById('department').value);
+        formData.append('priority', document.getElementById('priority').value);
         formData.append('title', document.getElementById('title').value);
         formData.append('description', document.getElementById('description').value);
 
@@ -206,6 +207,26 @@ async function fetchTickets() {
         const tickets = await response.json();
         loading.style.display = 'none';
 
+        let openCount = 0;
+        let progressCount = 0;
+        let resolvedCount = 0;
+
+        tickets.forEach(ticket => {
+            if (ticket.status === 'Open') openCount++;
+            else if (ticket.status === 'In Progress') progressCount++;
+            else if (ticket.status === 'Resolved') resolvedCount++;
+        });
+
+        const summaryTotalEl = document.getElementById('summaryTotal');
+        const summaryOpenEl = document.getElementById('summaryOpen');
+        const summaryProgressEl = document.getElementById('summaryProgress');
+        const summaryResolvedEl = document.getElementById('summaryResolved');
+
+        if (summaryTotalEl) summaryTotalEl.textContent = tickets.length;
+        if (summaryOpenEl) summaryOpenEl.textContent = openCount;
+        if (summaryProgressEl) summaryProgressEl.textContent = progressCount;
+        if (summaryResolvedEl) summaryResolvedEl.textContent = resolvedCount;
+
         if (tickets.length === 0) {
             empty.style.display = 'block';
             return;
@@ -216,12 +237,17 @@ async function fetchTickets() {
             if (ticket.status === 'In Progress') badgeClass = 'badge-progress';
             else if (ticket.status === 'Resolved') badgeClass = 'badge-resolved';
 
+            let priorityClass = 'badge-medium';
+            if (ticket.priority === 'High') priorityClass = 'badge-high';
+            else if (ticket.priority === 'Low') priorityClass = 'badge-low';
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
         <td style="color: var(--text-secondary); font-family: monospace;">#${ticket.id}</td>
         <td style="font-weight: 500;">${escapeHTML(ticket.name)}</td>
         <td><span style="background: var(--bg-tertiary); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem;">${escapeHTML(ticket.department)}</span></td>
         <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(ticket.title)}</td>
+        <td><span class="badge ${priorityClass}">${ticket.priority || 'Medium'}</span></td>
         <td><span class="badge ${badgeClass}">${ticket.status}</span></td>
         <td style="color: var(--text-secondary); font-size: 0.875rem;">${formatDate(ticket.created_at)}</td>
         <td>
@@ -248,6 +274,7 @@ function openEditModal(ticket) {
     document.getElementById('modalName').value = ticket.name;
     document.getElementById('modalEmail').value = ticket.email || '';
     document.getElementById('modalDepartment').value = ticket.department;
+    document.getElementById('modalPriority').value = ticket.priority || 'Medium';
     document.getElementById('modalTitleInput').value = ticket.title;
     document.getElementById('modalDescriptionInput').value = ticket.description;
     document.getElementById('modalStatus').value = ticket.status;
@@ -295,6 +322,7 @@ function openCreateModal() {
 
     document.getElementById('modalForm').reset();
     document.getElementById('modalTitleText').textContent = 'Create New Ticket';
+    document.getElementById('modalPriority').value = 'Medium';
     document.getElementById('modalStatus').value = 'Open';
 
     document.getElementById('deleteBtn').style.display = 'none';
@@ -326,6 +354,7 @@ if (modalForm) {
             const data = {
                 name: document.getElementById('modalName').value,
                 department: document.getElementById('modalDepartment').value,
+                priority: document.getElementById('modalPriority').value,
                 title: document.getElementById('modalTitleInput').value,
                 description: document.getElementById('modalDescriptionInput').value,
                 status: document.getElementById('modalStatus').value
@@ -343,6 +372,7 @@ if (modalForm) {
             formData.append('name', document.getElementById('modalName').value);
             formData.append('email', document.getElementById('modalEmail').value);
             formData.append('department', document.getElementById('modalDepartment').value);
+            formData.append('priority', document.getElementById('modalPriority').value);
             formData.append('title', document.getElementById('modalTitleInput').value);
             formData.append('description', document.getElementById('modalDescriptionInput').value);
             formData.append('status', document.getElementById('modalStatus').value);
@@ -404,4 +434,61 @@ async function deleteTicket() {
         console.error('Error deleting ticket:', error);
         showAlert('dashboardAlert', 'Network error', 'error');
     }
+}
+
+// Password Modal Logic
+function openPasswordModal() {
+    document.getElementById('passwordForm').reset();
+    document.getElementById('passwordModal').classList.add('active');
+}
+
+function closePasswordModal() {
+    document.getElementById('passwordModal').classList.remove('active');
+}
+
+const passwordForm = document.getElementById('passwordForm');
+if (passwordForm) {
+    passwordForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        if (newPassword !== confirmPassword) {
+            showAlert('passwordAlert', 'New passwords do not match', 'error');
+            return;
+        }
+
+        const token = localStorage.getItem('token');
+        const btn = passwordForm.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Changing...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(`${API_URL}/auth/change-password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                closePasswordModal();
+                showAlert('dashboardAlert', 'Password changed successfully', 'success');
+            } else {
+                showAlert('passwordAlert', result.error || 'Failed to change password', 'error');
+            }
+        } catch (error) {
+            console.error('Password change error:', error);
+            showAlert('passwordAlert', 'Network error. Please try again.', 'error');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
 }

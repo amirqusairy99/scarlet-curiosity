@@ -36,6 +36,7 @@ const createTables = async () => {
         department VARCHAR(50) NOT NULL,
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
+        priority ENUM('Low', 'Medium', 'High') DEFAULT 'Medium',
         status ENUM('Open', 'In Progress', 'Resolved') DEFAULT 'Open',
         attachment_path VARCHAR(255) DEFAULT NULL,
         token VARCHAR(64) UNIQUE NOT NULL,

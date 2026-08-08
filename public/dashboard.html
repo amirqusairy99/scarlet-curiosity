@@ -21,6 +21,9 @@
                     <i class="fa-solid fa-moon"></i>
                 </button>
                 <span style="color: var(--text-secondary); font-size: 0.875rem;">Welcome, Administrator</span>
+                <button class="btn btn-secondary btn-sm" onclick="openPasswordModal()">
+                    <i class="fa-solid fa-key" style="margin-right: 0.5rem;"></i> Change Password
+                </button>
                 <button id="logoutBtn" class="btn btn-secondary btn-sm">
                     <i class="fa-solid fa-right-from-bracket" style="margin-right: 0.5rem;"></i> Logout
                 </button>
@@ -46,6 +49,37 @@
 
         <div id="dashboardAlert" class="alert"></div>
 
+        <div class="summary-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm); border-left: 4px solid var(--text-secondary);">
+                <div style="font-size: 1.5rem; color: var(--text-secondary);"><i class="fa-solid fa-folder"></i></div>
+                <div>
+                    <h3 style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Total Tickets</h3>
+                    <span id="summaryTotal" style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); line-height: 1;">0</span>
+                </div>
+            </div>
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm); border-left: 4px solid var(--accent-primary);">
+                <div style="font-size: 1.5rem; color: var(--accent-primary);"><i class="fa-solid fa-circle-exclamation"></i></div>
+                <div>
+                    <h3 style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Open</h3>
+                    <span id="summaryOpen" style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); line-height: 1;">0</span>
+                </div>
+            </div>
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm); border-left: 4px solid var(--warning);">
+                <div style="font-size: 1.5rem; color: var(--warning);"><i class="fa-regular fa-clock"></i></div>
+                <div>
+                    <h3 style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">In Progress</h3>
+                    <span id="summaryProgress" style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); line-height: 1;">0</span>
+                </div>
+            </div>
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm); border-left: 4px solid var(--success);">
+                <div style="font-size: 1.5rem; color: var(--success);"><i class="fa-solid fa-circle-check"></i></div>
+                <div>
+                    <h3 style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Resolved</h3>
+                    <span id="summaryResolved" style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); line-height: 1;">0</span>
+                </div>
+            </div>
+        </div>
+
         <div class="table-container">
             <table>
                 <thead>
@@ -53,7 +87,8 @@
                         <th>ID</th>
                         <th>Requester</th>
                         <th>Department</th>
-                        <th>Title</th>
+                        <th>Issue Description</th>
+                        <th>Priority</th>
                         <th>Status</th>
                         <th>Submitted</th>
                         <th>Action</th>
@@ -111,13 +146,22 @@
                         </select>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label for="modalStatus">Status</label>
-                        <select id="modalStatus" required>
-                            <option value="Open">Open</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Resolved">Resolved</option>
+                        <label for="modalPriority">Priority</label>
+                        <select id="modalPriority" required>
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="modalStatus">Status</label>
+                    <select id="modalStatus" required>
+                        <option value="Open">Open</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
@@ -153,6 +197,37 @@
                         <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                         <button type="submit" class="btn btn-primary" id="saveBtn">Save Changes</button>
                     </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="passwordModal" class="modal-overlay">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Change Password</h2>
+                <button class="modal-close" onclick="closePasswordModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="passwordAlert" class="alert"></div>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" required>
+                </div>
+                <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="savePasswordBtn">Update Password</button>
                 </div>
             </form>
         </div>
