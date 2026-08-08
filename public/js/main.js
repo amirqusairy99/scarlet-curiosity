@@ -178,6 +178,7 @@ if (logoutBtn) {
 // ---------------------------------------------------------
 let currentTicketId = null;
 let isEditMode = false;
+let allTickets = [];
 
 async function fetchTickets() {
     const token = localStorage.getItem('token');
@@ -204,14 +205,14 @@ async function fetchTickets() {
             return;
         }
 
-        const tickets = await response.json();
+        allTickets = await response.json();
         loading.style.display = 'none';
 
         let openCount = 0;
         let progressCount = 0;
         let resolvedCount = 0;
 
-        tickets.forEach(ticket => {
+        allTickets.forEach(ticket => {
             if (ticket.status === 'Open') openCount++;
             else if (ticket.status === 'In Progress') progressCount++;
             else if (ticket.status === 'Resolved') resolvedCount++;
@@ -222,27 +223,46 @@ async function fetchTickets() {
         const summaryProgressEl = document.getElementById('summaryProgress');
         const summaryResolvedEl = document.getElementById('summaryResolved');
 
-        if (summaryTotalEl) summaryTotalEl.textContent = tickets.length;
+        if (summaryTotalEl) summaryTotalEl.textContent = allTickets.length;
         if (summaryOpenEl) summaryOpenEl.textContent = openCount;
         if (summaryProgressEl) summaryProgressEl.textContent = progressCount;
         if (summaryResolvedEl) summaryResolvedEl.textContent = resolvedCount;
 
-        if (tickets.length === 0) {
-            empty.style.display = 'block';
-            return;
-        }
+        renderTickets(allTickets);
+        syncSearchUI();
+    } catch (error) {
+        console.error('Error fetching tickets:', error);
+        loading.style.display = 'none';
+        showAlert('dashboardAlert', 'Failed to fetch tickets. Check console or try logging in again.', 'error');
+    }
+}
 
-        tickets.forEach(ticket => {
-            let badgeClass = 'badge-open';
-            if (ticket.status === 'In Progress') badgeClass = 'badge-progress';
-            else if (ticket.status === 'Resolved') badgeClass = 'badge-resolved';
+function renderTickets(tickets) {
+    const tbody = document.getElementById('ticketsTableBody');
+    const empty = document.getElementById('emptyState');
 
-            let priorityClass = 'badge-medium';
-            if (ticket.priority === 'High') priorityClass = 'badge-high';
-            else if (ticket.priority === 'Low') priorityClass = 'badge-low';
+    if (!tbody) return;
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
+    tbody.innerHTML = '';
+
+    if (tickets.length === 0) {
+        empty.style.display = 'block';
+        return;
+    }
+
+    empty.style.display = 'none';
+
+    tickets.forEach(ticket => {
+        let badgeClass = 'badge-open';
+        if (ticket.status === 'In Progress') badgeClass = 'badge-progress';
+        else if (ticket.status === 'Resolved') badgeClass = 'badge-resolved';
+
+        let priorityClass = 'badge-medium';
+        if (ticket.priority === 'High') priorityClass = 'badge-high';
+        else if (ticket.priority === 'Low') priorityClass = 'badge-low';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
         <td style="color: var(--text-secondary); font-family: monospace;">#${ticket.id}</td>
         <td style="font-weight: 500;">${escapeHTML(ticket.name)}</td>
         <td><span style="background: var(--bg-tertiary); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem;">${escapeHTML(ticket.department)}</span></td>
@@ -256,14 +276,55 @@ async function fetchTickets() {
           </button>
         </td>
       `;
-            tbody.appendChild(tr);
-        });
-    } catch (error) {
-        console.error('Error fetching tickets:', error);
-        loading.style.display = 'none';
-        showAlert('dashboardAlert', 'Failed to fetch tickets. Check console or try logging in again.', 'error');
+        tbody.appendChild(tr);
+    });
+}
+
+function filterTickets() {
+    const query = (document.getElementById('ticketSearch')?.value || '').trim().toLowerCase();
+    if (!query) {
+        renderTickets(allTickets);
+        syncSearchUI();
+        return;
+    }
+
+    const filtered = allTickets.filter(ticket => {
+        return (
+            String(ticket.id).toLowerCase().includes(query) ||
+            (ticket.name || '').toLowerCase().includes(query) ||
+            (ticket.email || '').toLowerCase().includes(query) ||
+            (ticket.department || '').toLowerCase().includes(query) ||
+            (ticket.title || '').toLowerCase().includes(query) ||
+            (ticket.description || '').toLowerCase().includes(query) ||
+            (ticket.priority || '').toLowerCase().includes(query) ||
+            (ticket.status || '').toLowerCase().includes(query)
+        );
+    });
+
+    renderTickets(filtered);
+    syncSearchUI();
+}
+
+function syncSearchUI() {
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const searchInput = document.getElementById('ticketSearch');
+    if (clearBtn) {
+        clearBtn.style.display = (searchInput && searchInput.value.trim()) ? 'inline-flex' : 'none';
     }
 }
+
+function clearSearch() {
+    const searchInput = document.getElementById('ticketSearch');
+    if (searchInput) searchInput.value = '';
+    renderTickets(allTickets);
+    syncSearchUI();
+}
+
+document.addEventListener('input', (e) => {
+    if (e.target && e.target.id === 'ticketSearch') {
+        filterTickets();
+    }
+});
 
 // Modal Logic
 function openEditModal(ticket) {
