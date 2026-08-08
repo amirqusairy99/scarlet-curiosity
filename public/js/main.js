@@ -179,8 +179,11 @@ if (logoutBtn) {
 let currentTicketId = null;
 let isEditMode = false;
 let allTickets = [];
+let searchTerm = '';
+let currentPage = 1;
+const PAGE_SIZE = 25;
 
-async function fetchTickets() {
+async function fetchTickets(page = currentPage, keepSummary = false) {
     const token = localStorage.getItem('token');
     if (!token) return;
 
@@ -190,12 +193,16 @@ async function fetchTickets() {
 
     if (!tbody) return;
 
+    currentPage = page;
     tbody.innerHTML = '';
     loading.style.display = 'block';
     empty.style.display = 'none';
 
+    const params = new URLSearchParams({ page, limit: PAGE_SIZE });
+    if (searchTerm) params.set('search', searchTerm);
+
     try {
-        const response = await fetch(`${API_URL}/tickets`, {
+        const response = await fetch(`${API_URL}/tickets?${params}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -205,36 +212,100 @@ async function fetchTickets() {
             return;
         }
 
-        allTickets = await response.json();
+        const data = await response.json();
+        const tickets = Array.isArray(data) ? data : (data.tickets || []);
+        const pagination = data.pagination || { page: 1, limit: PAGE_SIZE, total: tickets.length, totalPages: 1 };
+
         loading.style.display = 'none';
 
-        let openCount = 0;
-        let progressCount = 0;
-        let resolvedCount = 0;
+        if (!keepSummary) {
+            updateSummary(pagination.total);
+        }
 
-        allTickets.forEach(ticket => {
-            if (ticket.status === 'Open') openCount++;
-            else if (ticket.status === 'In Progress') progressCount++;
-            else if (ticket.status === 'Resolved') resolvedCount++;
-        });
-
-        const summaryTotalEl = document.getElementById('summaryTotal');
-        const summaryOpenEl = document.getElementById('summaryOpen');
-        const summaryProgressEl = document.getElementById('summaryProgress');
-        const summaryResolvedEl = document.getElementById('summaryResolved');
-
-        if (summaryTotalEl) summaryTotalEl.textContent = allTickets.length;
-        if (summaryOpenEl) summaryOpenEl.textContent = openCount;
-        if (summaryProgressEl) summaryProgressEl.textContent = progressCount;
-        if (summaryResolvedEl) summaryResolvedEl.textContent = resolvedCount;
-
-        renderTickets(allTickets);
+        allTickets = tickets;
+        renderTickets(tickets);
+        renderPagination(pagination);
         syncSearchUI();
     } catch (error) {
         console.error('Error fetching tickets:', error);
         loading.style.display = 'none';
         showAlert('dashboardAlert', 'Failed to fetch tickets. Check console or try logging in again.', 'error');
     }
+}
+
+function updateSummary(total) {
+    const summaryTotalEl = document.getElementById('summaryTotal');
+    if (summaryTotalEl) summaryTotalEl.textContent = total;
+
+    // Summary cards by status are approximated from the paginated data.
+    // For exact per-status totals at scale, add a dedicated summary endpoint.
+    let openCount = 0;
+    let progressCount = 0;
+    let resolvedCount = 0;
+
+    allTickets.forEach(ticket => {
+        if (ticket.status === 'Open') openCount++;
+        else if (ticket.status === 'In Progress') progressCount++;
+        else if (ticket.status === 'Resolved') resolvedCount++;
+    });
+
+    const summaryOpenEl = document.getElementById('summaryOpen');
+    const summaryProgressEl = document.getElementById('summaryProgress');
+    const summaryResolvedEl = document.getElementById('summaryResolved');
+
+    if (summaryOpenEl) summaryOpenEl.textContent = openCount;
+    if (summaryProgressEl) summaryProgressEl.textContent = progressCount;
+    if (summaryResolvedEl) summaryResolvedEl.textContent = resolvedCount;
+}
+
+function renderPagination(pagination) {
+    const container = document.getElementById('paginationControls');
+    if (!container) return;
+
+    const { page, totalPages, total, limit } = pagination;
+
+    if (total === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const from = (page - 1) * limit + 1;
+    const to = Math.min(page * limit, total);
+
+    let html = `<div class="pagination-info" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">
+        Showing ${from}&ndash;${to} of ${total} tickets
+    </div>
+    <div class="pagination-buttons" style="display: flex; align-items: center; gap: 0.5rem;">`;
+
+    html += `<button class="btn btn-secondary btn-sm" onclick="fetchTickets(${page - 1})" ${page <= 1 ? 'disabled' : ''}>
+        <i class="fa-solid fa-chevron-left"></i>
+    </button>`;
+
+    // Window of page numbers around current page
+    const startPage = Math.max(1, page - 2);
+    const endPage = Math.min(totalPages, page + 2);
+
+    if (startPage > 1) {
+        html += `<button class="btn btn-secondary btn-sm" onclick="fetchTickets(1)">1</button>`;
+        if (startPage > 2) html += `<span style="color: var(--text-secondary);">&hellip;</span>`;
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        html += `<button class="btn btn-sm ${p === page ? 'btn-primary' : 'btn-secondary'}" onclick="fetchTickets(${p})">${p}</button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span style="color: var(--text-secondary);">&hellip;</span>`;
+        html += `<button class="btn btn-secondary btn-sm" onclick="fetchTickets(${totalPages})">${totalPages}</button>`;
+    }
+
+    html += `<button class="btn btn-secondary btn-sm" onclick="fetchTickets(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>
+        <i class="fa-solid fa-chevron-right"></i>
+    </button>`;
+
+    html += `</div>`;
+
+    container.innerHTML = html;
 }
 
 function renderTickets(tickets) {
@@ -280,29 +351,15 @@ function renderTickets(tickets) {
     });
 }
 
+let searchDebounceTimer = null;
+
 function filterTickets() {
-    const query = (document.getElementById('ticketSearch')?.value || '').trim().toLowerCase();
-    if (!query) {
-        renderTickets(allTickets);
-        syncSearchUI();
-        return;
-    }
-
-    const filtered = allTickets.filter(ticket => {
-        return (
-            String(ticket.id).toLowerCase().includes(query) ||
-            (ticket.name || '').toLowerCase().includes(query) ||
-            (ticket.email || '').toLowerCase().includes(query) ||
-            (ticket.department || '').toLowerCase().includes(query) ||
-            (ticket.title || '').toLowerCase().includes(query) ||
-            (ticket.description || '').toLowerCase().includes(query) ||
-            (ticket.priority || '').toLowerCase().includes(query) ||
-            (ticket.status || '').toLowerCase().includes(query)
-        );
-    });
-
-    renderTickets(filtered);
-    syncSearchUI();
+    const query = (document.getElementById('ticketSearch')?.value || '').trim();
+    searchTerm = query;
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+        fetchTickets(1);
+    }, 300);
 }
 
 function syncSearchUI() {
@@ -316,8 +373,9 @@ function syncSearchUI() {
 function clearSearch() {
     const searchInput = document.getElementById('ticketSearch');
     if (searchInput) searchInput.value = '';
-    renderTickets(allTickets);
-    syncSearchUI();
+    searchTerm = '';
+    clearTimeout(searchDebounceTimer);
+    fetchTickets(1);
 }
 
 document.addEventListener('input', (e) => {

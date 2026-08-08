@@ -155,11 +155,46 @@ router.get('/public/:token', async (req, res) => {
 
 console.log('Tickets route logic initialized');
 
-// Admin Dashboard: View all tickets
+// Admin Dashboard: View tickets (with search + pagination)
 router.get('/', authenticate, async (req, res) => {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
+    const offset = (page - 1) * limit;
+    const search = (req.query.search || '').toString().trim();
+
     try {
-        const [tickets] = await db.execute('SELECT * FROM tickets ORDER BY created_at DESC');
-        res.json(tickets);
+        let where = '';
+        const params = [];
+
+        if (search) {
+            const like = `%${search}%`;
+            where = `WHERE id LIKE ? OR name LIKE ? OR email LIKE ? OR department LIKE ? OR title LIKE ? OR description LIKE ? OR priority LIKE ? OR status LIKE ?`;
+            params.push(like, like, like, like, like, like, like, like);
+        }
+
+        const [countRows] = await db.execute(
+            `SELECT COUNT(*) AS total FROM tickets ${where}`,
+            params
+        );
+        const total = countRows[0].total;
+
+        // limit/offset are already parsed as integers above, so they are safe to interpolate.
+        // mysql2 does not support binding placeholders for LIMIT/OFFSET in prepared statements.
+        const [tickets] = await db.execute(
+            `SELECT * FROM tickets ${where} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+            params
+        );
+
+        res.json({
+            success: true,
+            tickets,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.max(Math.ceil(total / limit), 1)
+            }
+        });
     } catch (error) {
         console.error('Error fetching tickets:', error);
         res.status(500).json({ success: false, error: 'Database error' });
