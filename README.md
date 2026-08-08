@@ -1,5 +1,7 @@
 # Scarlet Curiosity - MIS Ticketing System
 
+**Live Demo:** [Open Demo](https://mis-ticketing-demo.pages.dev)
+
 ![Scarlet Curiosity Banner](images/ticket-submission.png)
 
 
