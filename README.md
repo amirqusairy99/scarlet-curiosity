@@ -1,7 +1,11 @@
 # Scarlet Curiosity - MIS Ticketing System
 
 ![Scarlet Curiosity Banner](images/ticket-submission.png)
+
+
 A streamlined internal ticketing system for the MIS department, designed with a focus on simplicity, responsiveness, and clean UI design.
+
+![Scarlet Curiosity Banner](images/dashboard.png)
 
 ## Features
 - **Public Ticket Submission:** Employees can easily submit IT requests with attachments.
