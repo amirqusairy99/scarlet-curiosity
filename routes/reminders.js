@@ -82,7 +82,16 @@ router.get('/ticket/:ticketId', authenticate, async (req, res) => {
             'SELECT id, ticket_id, email, remind_at, sent, created_at FROM reminders WHERE ticket_id = ? ORDER BY remind_at ASC',
             [ticketId]
         );
-        res.json({ success: true, reminders });
+        // Convert the wrongly parsed local Date objects back to their correct UTC string representation
+        const correctedReminders = reminders.map(r => {
+            if (r.remind_at instanceof Date) {
+                const pad = n => String(n).padStart(2, '0');
+                const d = r.remind_at;
+                r.remind_at = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}Z`;
+            }
+            return r;
+        });
+        res.json({ success: true, reminders: correctedReminders });
     } catch (error) {
         console.error('Error fetching reminders:', error);
         res.status(500).json({ success: false, error: 'Database error' });

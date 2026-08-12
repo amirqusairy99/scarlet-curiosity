@@ -21,7 +21,9 @@ const sendReminderEmail = async (reminder, ticket) => {
     const template = handlebars.compile(templateSource);
 
     const remindAt = reminder.remind_at
-        ? new Date(reminder.remind_at.replace(' ', 'T') + 'Z').toLocaleString()
+        ? (typeof reminder.remind_at === 'string' 
+            ? new Date(reminder.remind_at.replace(' ', 'T') + 'Z').toLocaleString() 
+            : reminder.remind_at.toLocaleString())
         : '';
 
     const ticketUrl = ticket.token
