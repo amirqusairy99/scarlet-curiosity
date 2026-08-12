@@ -220,11 +220,12 @@ async function fetchTickets(page = currentPage, keepSummary = false) {
 
         loading.style.display = 'none';
 
+        allTickets = tickets;
+
         if (!keepSummary) {
             updateSummary(pagination.total);
         }
 
-        allTickets = tickets;
         renderTickets(tickets);
         renderPagination(pagination);
         syncSearchUI();

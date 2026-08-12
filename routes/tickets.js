@@ -214,7 +214,7 @@ router.get('/', authenticate, async (req, res) => {
         // limit/offset are already parsed as integers above, so they are safe to interpolate.
         // mysql2 does not support binding placeholders for LIMIT/OFFSET in prepared statements.
         const [tickets] = await db.execute(
-            `SELECT * FROM tickets ${where} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+            `SELECT * FROM tickets ${where} ORDER BY created_at DESC, id DESC LIMIT ${limit} OFFSET ${offset}`,
             params
         );
 
