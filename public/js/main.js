@@ -204,7 +204,8 @@ async function fetchTickets(page = currentPage, keepSummary = false) {
 
     try {
         const response = await fetch(`${API_URL}/tickets?${params}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${token}` },
+            cache: 'no-store'
         });
 
         if (response.status === 401 || response.status === 403) {
@@ -727,7 +728,8 @@ async function loadReminders(ticketId) {
 
     try {
         const response = await fetch(`${API_URL}/reminders/ticket/${ticketId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${token}` },
+            cache: 'no-store'
         });
         if (!response.ok) throw new Error('Failed to load reminders');
 
