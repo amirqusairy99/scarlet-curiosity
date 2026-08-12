@@ -23,12 +23,12 @@ const sendReminderEmail = async (reminder, ticket) => {
     let remindAt = '';
     if (reminder.remind_at) {
         if (typeof reminder.remind_at === 'string') {
-            remindAt = new Date(reminder.remind_at.replace(' ', 'T') + 'Z').toLocaleString();
+            remindAt = new Date(reminder.remind_at.replace(' ', 'T') + 'Z').toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' });
         } else if (reminder.remind_at instanceof Date) {
             const d = reminder.remind_at;
             const pad = n => String(n).padStart(2, '0');
             const utcString = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}Z`;
-            remindAt = new Date(utcString).toLocaleString();
+            remindAt = new Date(utcString).toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' });
         }
     }
 
