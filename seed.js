@@ -15,6 +15,8 @@ const createTables = async () => {
 
     // Drop tables for a full reset
     console.log('Dropping existing tables for reset...');
+    await connection.query('DROP TABLE IF EXISTS reminders;');
+    await connection.query('DROP TABLE IF EXISTS attachments;');
     await connection.query('DROP TABLE IF EXISTS tickets;');
     await connection.query('DROP TABLE IF EXISTS users;');
 
@@ -42,6 +44,19 @@ const createTables = async () => {
         token VARCHAR(64) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+    `);
+
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS reminders (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ticket_id INT NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        remind_at DATETIME NOT NULL,
+        sent TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ticket (ticket_id),
+        INDEX idx_due (sent, remind_at)
       );
     `);
 

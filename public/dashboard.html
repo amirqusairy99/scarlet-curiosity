@@ -219,6 +219,54 @@
         </div>
     </div>
 
+    <!-- Reminder Modal -->
+    <div id="reminderModal" class="modal-overlay">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 id="reminderTitle">Set Reminder</h2>
+                <button class="modal-close" onclick="closeReminderModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="reminderAlert" class="alert"></div>
+
+            <form id="reminderForm">
+                <div class="form-group">
+                    <label>Ticket</label>
+                    <div id="reminderTicketInfo"
+                        style="background: var(--bg-tertiary); padding: 0.6rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.9rem;"># -</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="reminderDatetime">Reminder Date &amp; Time</label>
+                        <input type="datetime-local" id="reminderDatetime" required>
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Uses your local
+                            time.</p>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="reminderEmail">Remind Email</label>
+                        <input type="email" id="reminderEmail" placeholder="Defaults to support mailbox">
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Where to send the
+                            reminder.</p>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-bottom: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeReminderModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveReminderBtn">Set Reminder</button>
+                </div>
+            </form>
+
+            <div style="border-top: 1px solid var(--glass-border); padding-top: 1.25rem;">
+                <label>Scheduled Reminders</label>
+                <div id="reminderList" style="margin-top: 0.75rem;">
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">No reminders set for this ticket.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Change Password Modal -->
     <div id="passwordModal" class="modal-overlay">
         <div class="modal" style="max-width: 500px;">

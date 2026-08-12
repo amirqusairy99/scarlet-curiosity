@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | MIS Dashboard Demo</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="demo-banner">
+    <i class="fa-solid fa-flask"></i> Demo Mode &mdash; data is stored in your browser (localStorage). No server required.
+  </div>
+
+  <header>
+    <div class="nav-content">
+      <a href="index.html" class="logo"><i class="fa-solid fa-satellite-dish"></i> MIS <span>Demo</span></a>
+      <nav style="display: flex; gap: 1rem; align-items: center;">
+        <button id="themeToggle" class="btn-icon" aria-label="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
+        <a href="index.html" class="btn btn-secondary btn-sm">Submit New Ticket</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="auth-container">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <i class="fa-solid fa-shield-halved" style="font-size: 2rem; color: var(--accent-primary); margin-bottom: 0.75rem;"></i>
+        <h2>Admin Dashboard Login</h2>
+        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem;">Use the demo credentials below</p>
+      </div>
+
+      <div id="loginAlert" class="alert"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="administrator" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="misdashboard9090" autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-right-to-bracket" style="margin-right: 0.5rem;"></i> Sign In</button>
+      </form>
+
+      <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-tertiary); border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-secondary);">
+        <strong>Demo accounts:</strong><br>
+        Admin &mdash; <code>administrator / misdashboard9090</code><br>
+        User &mdash; <code>demo / demo1234</code>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/core.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('loginForm');
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const result = DemoAuth.login(username, password);
+        if (result.ok) {
+          window.location.href = 'dashboard.html';
+        } else {
+          showAlert('loginAlert', result.error, 'error');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIS Dashboard | Demo</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="demo-banner">
+    <i class="fa-solid fa-flask"></i> Demo Mode &mdash; data is stored in your browser (localStorage). No server required.
+  </div>
+
+  <header>
+    <div class="nav-content">
+      <a href="dashboard.html" class="logo"><i class="fa-solid fa-satellite-dish"></i> MIS <span>Dashboard</span></a>
+      <nav style="display: flex; gap: 1rem; align-items: center;">
+        <button id="themeToggle" class="btn-icon" aria-label="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
+        <span style="color: var(--text-secondary); font-size: 0.875rem;" id="welcomeLabel">Welcome</span>
+        <a href="index.html" class="btn btn-secondary btn-sm"><i class="fa-solid fa-plus" style="margin-right: 0.5rem;"></i> New Ticket</a>
+        <button id="logoutBtn" class="btn btn-secondary btn-sm"><i class="fa-solid fa-right-from-bracket" style="margin-right: 0.5rem;"></i> Logout</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="dashboard-container" style="padding: 0 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h2>IT Service Tickets</h2>
+        <p style="color: var(--text-secondary);">Manage and resolve incoming employee requests.</p>
+      </div>
+      <div style="display: flex; gap: 1rem;">
+        <button class="btn btn-primary btn-sm" onclick="openCreateModal()"><i class="fa-solid fa-plus" style="margin-right: 0.5rem;"></i> Create Ticket</button>
+        <button class="btn btn-secondary btn-sm" onclick="fetchTickets()"><i class="fa-solid fa-rotate-right" style="margin-right: 0.5rem;"></i> Refresh</button>
+      </div>
+    </div>
+
+    <div id="dashboardAlert" class="alert"></div>
+
+    <div class="search-bar">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="ticketSearch" placeholder="Search by ID, requester, department, title, priority or status...">
+      <button class="btn btn-secondary btn-sm" onclick="clearSearch()" id="clearSearchBtn" style="display: none;"><i class="fa-solid fa-xmark" style="margin-right: 0.4rem;"></i> Clear</button>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="icon"><i class="fa-solid fa-folder"></i></div>
+        <div><div class="label">Total Tickets</div><div class="value" id="summaryTotal">0</div></div>
+      </div>
+      <div class="summary-card accent">
+        <div class="icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+        <div><div class="label">Open</div><div class="value" id="summaryOpen">0</div></div>
+      </div>
+      <div class="summary-card warning">
+        <div class="icon"><i class="fa-regular fa-clock"></i></div>
+        <div><div class="label">In Progress</div><div class="value" id="summaryProgress">0</div></div>
+      </div>
+      <div class="summary-card success">
+        <div class="icon"><i class="fa-solid fa-circle-check"></i></div>
+        <div><div class="label">Resolved</div><div class="value" id="summaryResolved">0</div></div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Requester</th>
+              <th>Department</th>
+              <th>Issue Description</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Submitted</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="ticketsTableBody"></tbody>
+        </table>
+      </div>
+      <div id="loadingIndicator" style="text-align: center; padding: 2rem; color: var(--text-secondary); display: none;">
+        <i class="fa-solid fa-circle-notch fa-spin"></i> Loading tickets...
+      </div>
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <i class="fa-solid fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; color: var(--border-color-hover);"></i>
+        <p>No tickets found.</p>
+      </div>
+    </div>
+
+    <div class="pagination-controls" id="paginationControls"></div>
+  </main>
+
+  <!-- Ticket Details/Create Modal -->
+  <div id="ticketModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitleText">Ticket Details</h2>
+        <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="modalForm">
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="modalName">Requester Name</label>
+            <input type="text" id="modalName" required>
+          </div>
+          <div class="form-group">
+            <label for="modalEmail">Email Address</label>
+            <input type="email" id="modalEmail" required>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="modalDepartment">Department</label>
+            <select id="modalDepartment">
+              <option value="Development">Development</option>
+              <option value="Support">Support</option>
+              <option value="HR">HR</option>
+              <option value="MIS">MIS</option>
+              <option value="BA">BA</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Finance">Finance</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="modalPriority">Priority</label>
+            <select id="modalPriority">
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="modalStatus">Status</label>
+          <select id="modalStatus">
+            <option value="Open">Open</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="modalTitleInput">Issue Title</label>
+          <input type="text" id="modalTitleInput" required>
+        </div>
+
+        <div class="form-group">
+          <label for="modalDescriptionInput">Description</label>
+          <textarea id="modalDescriptionInput" rows="5" required></textarea>
+        </div>
+
+        <div id="newAttachmentSection" class="form-group" style="display: none;">
+          <label for="modalAttachmentInput">Add More Attachments (Optional)</label>
+          <input type="file" id="modalAttachmentInput" accept="image/*,.pdf" multiple>
+          <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Existing attachments are kept. In Edit mode use the "Add Files" button; in Create mode files upload with the ticket.</p>
+        </div>
+
+        <div id="attachmentSection" class="form-group" style="display: none;">
+          <label>Attachments</label>
+          <div id="attachmentDisplay" style="margin-top: 0.5rem;"></div>
+        </div>
+
+        <div id="addAttachmentsSection" style="display: none; margin-bottom: 0.5rem;">
+          <button type="button" id="addAttachmentsBtn" class="btn btn-secondary btn-sm"><i class="fa-solid fa-paperclip" style="margin-right: 0.5rem;"></i> Add Selected Files</button>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="deleteBtn" class="btn btn-secondary" style="border-color: var(--danger); color: var(--danger);" onclick="deleteTicket()"><i class="fa-solid fa-trash-can" style="margin-right: 0.5rem;"></i> Delete</button>
+          <div style="display: flex; gap: 1rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveBtn">Save Changes</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/core.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!DemoAuth.requireAuth()) return;
+      const session = DemoAuth.session();
+      document.getElementById('welcomeLabel').textContent = `Welcome, ${session.username}`;
+      fetchTickets();
+    });
+  </script>
+</body>
+</html>

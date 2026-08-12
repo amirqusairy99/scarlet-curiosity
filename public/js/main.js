@@ -343,9 +343,14 @@ function renderTickets(tickets) {
         <td><span class="badge ${badgeClass}">${ticket.status}</span></td>
         <td style="color: var(--text-secondary); font-size: 0.875rem;">${formatDate(ticket.created_at)}</td>
         <td>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
           <button class="btn btn-secondary btn-sm" onclick='openEditModal(${JSON.stringify(ticket).replace(/'/g, "&apos;")})'>
             View/Edit
           </button>
+          <button class="btn btn-secondary btn-sm" title="Set reminder" onclick='openReminderModal(${JSON.stringify(ticket).replace(/'/g, "&apos;")})'>
+            <i class="fa-solid fa-bell"></i>
+          </button>
+          </div>
         </td>
       `;
         tbody.appendChild(tr);
@@ -678,6 +683,159 @@ async function deleteTicket() {
         console.error('Error deleting ticket:', error);
         showAlert('dashboardAlert', 'Network error', 'error');
     }
+}
+
+// ---------------------------------------------------------
+// Reminder Modal Logic
+// ---------------------------------------------------------
+let currentReminderTicket = null;
+
+// Convert a UTC "YYYY-MM-DD HH:MM:SS" string to a local datetime-local value
+function utcToLocalInputValue(utcString) {
+    if (!utcString) return '';
+    const d = new Date(utcString.replace(' ', 'T') + 'Z');
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatReminderDate(utcString) {
+    if (!utcString) return '';
+    return new Date(utcString.replace(' ', 'T') + 'Z').toLocaleString();
+}
+
+function openReminderModal(ticket) {
+    currentReminderTicket = ticket;
+    document.getElementById('reminderTitle').textContent = `Set Reminder - Ticket #${ticket.id}`;
+    document.getElementById('reminderTicketInfo').textContent = `#${ticket.id} - ${ticket.title}`;
+    document.getElementById('reminderForm').reset();
+    document.getElementById('reminderDatetime').value = '';
+    document.getElementById('reminderEmail').value = '';
+    document.getElementById('reminderAlert').style.display = 'none';
+    document.getElementById('reminderModal').classList.add('active');
+    loadReminders(ticket.id);
+}
+
+function closeReminderModal() {
+    document.getElementById('reminderModal').classList.remove('active');
+    currentReminderTicket = null;
+}
+
+async function loadReminders(ticketId) {
+    const token = localStorage.getItem('token');
+    const listEl = document.getElementById('reminderList');
+
+    try {
+        const response = await fetch(`${API_URL}/reminders/ticket/${ticketId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to load reminders');
+
+        const data = await response.json();
+        renderReminders(data.reminders || []);
+    } catch (error) {
+        console.error('Error loading reminders:', error);
+        if (listEl) listEl.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.875rem;">Failed to load reminders.</p>';
+    }
+}
+
+function renderReminders(reminders) {
+    const listEl = document.getElementById('reminderList');
+    if (!listEl) return;
+
+    if (!reminders.length) {
+        listEl.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.875rem;">No reminders set for this ticket.</p>';
+        return;
+    }
+
+    let html = '';
+    reminders.forEach(r => {
+        const sentBadge = r.sent === 1
+            ? '<span class="badge badge-resolved">Sent</span>'
+            : '<span class="badge badge-open">Pending</span>';
+        html += `
+        <div class="attachment-item" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border: 1px solid var(--glass-border); border-radius: var(--radius-md); margin-bottom: 0.5rem;">
+            <i class="fa-solid fa-bell" style="color: var(--warning); font-size: 1.1rem;"></i>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 500; font-size: 0.9rem;">${formatReminderDate(r.remind_at)}</div>
+                <div style="color: var(--text-secondary); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(r.email || '')}</div>
+            </div>
+            ${sentBadge}
+            <button class="btn btn-secondary btn-sm" onclick="deleteReminder(${r.id})" title="Remove" style="border-color: var(--danger); color: var(--danger);">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+        </div>`;
+    });
+    listEl.innerHTML = html;
+}
+
+async function deleteReminder(reminderId) {
+    if (!confirm('Remove this reminder?')) return;
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/reminders/${reminderId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            showAlert('reminderAlert', 'Reminder removed', 'success');
+            if (currentReminderTicket) loadReminders(currentReminderTicket.id);
+        } else {
+            showAlert('reminderAlert', 'Failed to remove reminder', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting reminder:', error);
+        showAlert('reminderAlert', 'Network error', 'error');
+    }
+}
+
+const reminderForm = document.getElementById('reminderForm');
+if (reminderForm) {
+    reminderForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentReminderTicket) return;
+
+        const remindAt = document.getElementById('reminderDatetime').value;
+        if (!remindAt) {
+            showAlert('reminderAlert', 'Please choose a reminder date and time', 'error');
+            return;
+        }
+
+        const email = document.getElementById('reminderEmail').value.trim();
+
+        const token = localStorage.getItem('token');
+        const btn = document.getElementById('saveReminderBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(`${API_URL}/reminders`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ ticketId: currentReminderTicket.id, remindAt, email })
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                showAlert('reminderAlert', `Reminder set for ${formatReminderDate(result.remindAt)}`, 'success');
+                document.getElementById('reminderDatetime').value = '';
+                document.getElementById('reminderEmail').value = '';
+                loadReminders(currentReminderTicket.id);
+            } else {
+                showAlert('reminderAlert', result.error || 'Failed to set reminder', 'error');
+            }
+        } catch (error) {
+            console.error('Error setting reminder:', error);
+            showAlert('reminderAlert', 'Network error', 'error');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
 }
 
 // Password Modal Logic

@@ -15,6 +15,12 @@ app.use('/api/auth', require('./routes/auth'));
 console.log('Auth routes registered');
 app.use('/api/tickets', require('./routes/tickets'));
 console.log('Ticket routes registered');
+app.use('/api/reminders', require('./routes/reminders'));
+console.log('Reminder routes registered');
+
+// Periodically send scheduled reminder emails
+const { startReminderScheduler } = require('./reminderScheduler');
+startReminderScheduler();
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, '0.0.0.0', () => {

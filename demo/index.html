@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Ticket | MIS Dashboard Demo</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="demo-banner">
+    <i class="fa-solid fa-flask"></i> Demo Mode &mdash; data is stored in your browser (localStorage). No server required.
+  </div>
+
+  <header>
+    <div class="nav-content">
+      <a href="index.html" class="logo"><i class="fa-solid fa-satellite-dish"></i> MIS <span>Demo</span></a>
+      <nav style="display: flex; gap: 1rem; align-items: center;">
+        <button id="themeToggle" class="btn-icon" aria-label="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
+        <a href="dashboard.html" class="btn btn-primary btn-sm"><i class="fa-solid fa-gauge" style="margin-right: 0.5rem;"></i> Admin Dashboard</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="form-container">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <i class="fa-solid fa-headset" style="font-size: 2rem; color: var(--accent-primary); margin-bottom: 0.75rem;"></i>
+        <h2>Submit an IT Request</h2>
+        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem;">Fill in the form to create a support ticket</p>
+      </div>
+
+      <div id="submitAlert" class="alert"></div>
+
+      <form id="ticketForm">
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Work Email</label>
+            <input type="email" id="email" required>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="department">Department</label>
+            <select id="department" required>
+              <option value="Development">Development</option>
+              <option value="Support">Support</option>
+              <option value="HR">HR</option>
+              <option value="MIS">MIS</option>
+              <option value="BA">BA</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Finance">Finance</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="priority">Priority</label>
+            <select id="priority" required>
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="title">Issue Title</label>
+          <input type="text" id="title" placeholder="Brief summary of the issue" required>
+        </div>
+
+        <div class="form-group">
+          <label for="description">Detailed Description</label>
+          <textarea id="description" rows="5" placeholder="Describe what went wrong or what you need help with..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="attachment">Attachments (Optional)</label>
+          <input type="file" id="attachment" accept="image/*,.pdf" multiple>
+          <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Upload screenshots or documents (JPEG, PNG, PDF). In demo mode, only file names are stored.</p>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">
+          <i class="fa-solid fa-paper-plane" style="margin-right: 0.5rem;"></i> Submit Ticket
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <script src="js/core.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('ticketForm');
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const fileInput = document.getElementById('attachment');
+        const attachments = Array.from(fileInput.files || []).map(f => ({
+          id: String(Date.now()) + '-' + f.name,
+          file_path: '',
+          original_name: f.name
+        }));
+
+        const ticket = DemoApi.create({
+          name: document.getElementById('name').value,
+          email: document.getElementById('email').value,
+          department: document.getElementById('department').value,
+          priority: document.getElementById('priority').value,
+          title: document.getElementById('title').value,
+          description: document.getElementById('description').value,
+          status: 'Open',
+          attachments
+        });
+
+        const trackUrl = `ticket-status.html?token=${ticket.token}`;
+        showAlert('submitAlert',
+          `Success! Ticket #${ticket.id} created. <br><a href="${trackUrl}" target="_blank" style="color: var(--accent-primary); text-decoration: underline; font-weight: 600;">Track Ticket Status here</a>`,
+          'success');
+        form.reset();
+      });
+    });
+  </script>
+</body>
+</html>

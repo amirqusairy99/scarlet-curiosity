@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ticket Status | MIS Demo</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="demo-banner">
+    <i class="fa-solid fa-flask"></i> Demo Mode &mdash; data is stored in your browser (localStorage). No server required.
+  </div>
+
+  <header>
+    <div class="nav-content">
+      <a href="index.html" class="logo"><i class="fa-solid fa-satellite-dish"></i> MIS <span>Ticket Tracker</span></a>
+      <nav style="display: flex; gap: 1rem; align-items: center;">
+        <button id="themeToggle" class="btn-icon" aria-label="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
+        <a href="index.html" class="btn btn-secondary btn-sm">Submit New Ticket</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="statusContainer" class="status-card">
+      <div class="loading-state">
+        <i class="fa-solid fa-spinner fa-spin fa-2xl" style="color: var(--accent-primary); margin-bottom: 1rem;"></i>
+        <p>Loading ticket status details...</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/core.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const container = document.getElementById('statusContainer');
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+
+      if (!token) {
+        container.innerHTML = `
+          <div class="error-state">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <h2>Missing Token</h2>
+            <p style="margin-top: 0.5rem;">No ticket tracking token was provided in the URL.</p>
+            <a href="index.html" class="btn btn-primary" style="margin-top: 1.5rem; display: inline-block;">Submit a New Ticket</a>
+          </div>`;
+        return;
+      }
+
+      const ticket = DemoApi.getByToken(token);
+      if (!ticket) {
+        container.innerHTML = `
+          <div class="error-state">
+            <i class="fa-solid fa-circle-xmark"></i>
+            <h2>Ticket Not Found</h2>
+            <p style="margin-top: 0.5rem;">The ticket could not be found. It may have been deleted.</p>
+            <a href="index.html" class="btn btn-primary" style="margin-top: 1.5rem; display: inline-block;">Submit a New Ticket</a>
+          </div>`;
+        return;
+      }
+
+      const statusClass = ticket.status === 'In Progress' ? 'badge-progress' : (ticket.status === 'Resolved' ? 'badge-resolved' : 'badge-open');
+
+      let attachmentsHtml = '';
+      if (ticket.attachments && ticket.attachments.length) {
+        const links = ticket.attachments.map(att => {
+          const name = att.original_name || att.file_path.split('/').pop() || 'file';
+          return `<li style="margin-bottom: 0.5rem; list-style: none;"><a class="attachment-link" href="#" onclick="event.preventDefault()"><i class="fa-solid fa-paperclip"></i> ${escapeHTML(name)}</a></li>`;
+        }).join('');
+        attachmentsHtml = `<div class="detail-item" style="grid-column: span 2;"><label>Attachments (${ticket.attachments.length})</label><ul style="padding: 0; margin: 0;">${links}</ul></div>`;
+      }
+
+      container.innerHTML = `
+        <div class="status-header">
+          <div>
+            <h2 style="font-size: 1.5rem; margin-bottom: 0.25rem;">${escapeHTML(ticket.title)}</h2>
+            <p style="color: var(--text-secondary); font-size: 0.875rem;">Ticket #${ticket.id}</p>
+          </div>
+          <span class="status-badge ${statusClass}">${escapeHTML(ticket.status)}</span>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-item"><label>Submitted By</label><span>${escapeHTML(ticket.name)}</span></div>
+          <div class="detail-item"><label>Email Address</label><span>${escapeHTML(ticket.email)}</span></div>
+          <div class="detail-item"><label>Department</label><span>${escapeHTML(ticket.department)}</span></div>
+          <div class="detail-item"><label>Date Created</label><span>${formatDate(ticket.created_at)}</span></div>
+          <div class="detail-item"><label>Priority</label><span>${escapeHTML(ticket.priority)}</span></div>
+          <div class="detail-item"><label>Last Updated</label><span>${formatDate(ticket.updated_at)}</span></div>
+          ${attachmentsHtml}
+        </div>
+
+        <div style="margin-top: 2rem;">
+          <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.5rem;">Description</label>
+          <div class="ticket-description">${escapeHTML(ticket.description)}</div>
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+          <p style="color: var(--text-secondary); font-size: 0.875rem;">This is a secure, unguessable status link. Keep this URL to monitor updates.</p>
+        </div>`;
+    });
+  </script>
+</body>
+</html>
