@@ -20,11 +20,17 @@ const sendReminderEmail = async (reminder, ticket) => {
     const templateSource = fs.readFileSync(path.join(__dirname, 'emails', 'reminder.hbs'), 'utf8');
     const template = handlebars.compile(templateSource);
 
-    const remindAt = reminder.remind_at
-        ? (typeof reminder.remind_at === 'string' 
-            ? new Date(reminder.remind_at.replace(' ', 'T') + 'Z').toLocaleString() 
-            : reminder.remind_at.toLocaleString())
-        : '';
+    let remindAt = '';
+    if (reminder.remind_at) {
+        if (typeof reminder.remind_at === 'string') {
+            remindAt = new Date(reminder.remind_at.replace(' ', 'T') + 'Z').toLocaleString();
+        } else if (reminder.remind_at instanceof Date) {
+            const d = reminder.remind_at;
+            const pad = n => String(n).padStart(2, '0');
+            const utcString = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}Z`;
+            remindAt = new Date(utcString).toLocaleString();
+        }
+    }
 
     const ticketUrl = ticket.token
         ? `${process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`}/ticket-status.html?token=${ticket.token}`
