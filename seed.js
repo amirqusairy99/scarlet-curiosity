@@ -13,12 +13,8 @@ const createTables = async () => {
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME || 'it_ticketing'}\`;`);
     await connection.query(`USE \`${process.env.DB_NAME || 'it_ticketing'}\`;`);
 
-    // Drop tables for a full reset
-    console.log('Dropping existing tables for reset...');
-    await connection.query('DROP TABLE IF EXISTS reminders;');
-    await connection.query('DROP TABLE IF EXISTS attachments;');
-    await connection.query('DROP TABLE IF EXISTS tickets;');
-    await connection.query('DROP TABLE IF EXISTS users;');
+    // Create tables if they don't exist
+    console.log('Ensuring tables exist...');
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS users (
