@@ -151,7 +151,7 @@ if (loginForm) {
             const result = await response.json();
             if (response.ok) {
                 localStorage.setItem('token', result.token);
-                window.location.href = 'dashboard.html';
+                window.location.href = 'dashboard.html?t=' + Date.now();
             } else {
                 showAlert('loginAlert', result.error || result.message || 'Invalid credentials', 'error');
             }
