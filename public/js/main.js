@@ -798,11 +798,12 @@ if (reminderForm) {
         e.preventDefault();
         if (!currentReminderTicket) return;
 
-        const remindAt = document.getElementById('reminderDatetime').value;
-        if (!remindAt) {
+        const remindAtRaw = document.getElementById('reminderDatetime').value;
+        if (!remindAtRaw) {
             showAlert('reminderAlert', 'Please choose a reminder date and time', 'error');
             return;
         }
+        const remindAt = new Date(remindAtRaw).toISOString();
 
         const email = document.getElementById('reminderEmail').value.trim();
 
