@@ -48,6 +48,17 @@ const createTables = async () => {
     `);
 
     await connection.query(`
+      CREATE TABLE IF NOT EXISTS attachments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ticket_id INT NOT NULL,
+        file_path VARCHAR(255) NOT NULL,
+        original_name VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+      );
+    `);
+
+    await connection.query(`
       CREATE TABLE IF NOT EXISTS reminders (
         id INT AUTO_INCREMENT PRIMARY KEY,
         ticket_id INT NOT NULL,
