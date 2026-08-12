@@ -199,7 +199,7 @@ async function fetchTickets(page = currentPage, keepSummary = false) {
     loading.style.display = 'block';
     empty.style.display = 'none';
 
-    const params = new URLSearchParams({ page, limit: PAGE_SIZE });
+    const params = new URLSearchParams({ page, limit: PAGE_SIZE, _: Date.now() });
     if (searchTerm) params.set('search', searchTerm);
 
     try {
@@ -727,7 +727,7 @@ async function loadReminders(ticketId) {
     const listEl = document.getElementById('reminderList');
 
     try {
-        const response = await fetch(`${API_URL}/reminders/ticket/${ticketId}`, {
+        const response = await fetch(`${API_URL}/reminders/ticket/${ticketId}?_=${Date.now()}`, {
             headers: { 'Authorization': `Bearer ${token}` },
             cache: 'no-store'
         });
