@@ -180,13 +180,35 @@ if (logoutBtn) {
 let currentTicketId = null;
 let isEditMode = false;
 let allTickets = [];
+let adminUsers = [];
 let searchTerm = '';
+let currentFilter = 'all';
 let currentPage = 1;
 const PAGE_SIZE = 25;
+
+async function fetchAdminUsers() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+        const response = await fetch(`${API_URL}/auth/users`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            adminUsers = data.users || [];
+        }
+    } catch (error) {
+        console.error('Error fetching users:', error);
+    }
+}
 
 async function fetchTickets(page = currentPage, keepSummary = false) {
     const token = localStorage.getItem('token');
     if (!token) return;
+
+    if (adminUsers.length === 0) {
+        await fetchAdminUsers();
+    }
 
     const tbody = document.getElementById('ticketsTableBody');
     const loading = document.getElementById('loadingIndicator');
@@ -201,6 +223,7 @@ async function fetchTickets(page = currentPage, keepSummary = false) {
 
     const params = new URLSearchParams({ page, limit: PAGE_SIZE, _: Date.now() });
     if (searchTerm) params.set('search', searchTerm);
+    if (currentFilter !== 'all') params.set('filter', currentFilter);
 
     try {
         const response = await fetch(`${API_URL}/tickets?${params}`, {
@@ -334,6 +357,12 @@ function renderTickets(tickets) {
         let priorityClass = 'badge-medium';
         if (ticket.priority === 'High') priorityClass = 'badge-high';
         else if (ticket.priority === 'Low') priorityClass = 'badge-low';
+        
+        let usersOptions = `<option value="">Unassigned</option>`;
+        adminUsers.forEach(u => {
+            const selected = ticket.assigned_to === u.id ? 'selected' : '';
+            usersOptions += `<option value="${u.id}" ${selected}>${escapeHTML(u.username)}</option>`;
+        });
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -343,6 +372,11 @@ function renderTickets(tickets) {
         <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(ticket.title)}</td>
         <td><span class="badge ${priorityClass}">${ticket.priority || 'Medium'}</span></td>
         <td><span class="badge ${badgeClass}">${ticket.status}</span></td>
+        <td>
+            <select class="form-control" style="padding: 0.25rem; font-size: 0.875rem;" onchange="assignTicket(${ticket.id}, this.value)">
+                ${usersOptions}
+            </select>
+        </td>
         <td style="color: var(--text-secondary); font-size: 0.875rem;">${formatDate(ticket.created_at)}</td>
         <td>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -392,6 +426,41 @@ document.addEventListener('input', (e) => {
     }
 });
 
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.classList.contains('filter-btn')) {
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        e.target.classList.add('active');
+        currentFilter = e.target.getAttribute('data-filter');
+        fetchTickets(1);
+    }
+});
+
+async function assignTicket(ticketId, userId) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/tickets/${ticketId}/assign`, {
+            method: 'PATCH',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ assigned_to: userId || null })
+        });
+        
+        if (response.ok) {
+            showAlert('dashboardAlert', 'Ticket assigned successfully', 'success');
+        } else {
+            const result = await response.json();
+            showAlert('dashboardAlert', result.error || 'Failed to assign ticket', 'error');
+        }
+    } catch (error) {
+        console.error('Error assigning ticket:', error);
+        showAlert('dashboardAlert', 'Network error. Please try again.', 'error');
+    }
+}
+
 // Modal Logic
 function openEditModal(ticket) {
     isEditMode = true;
@@ -432,7 +501,81 @@ function openEditModal(ticket) {
     // In edit mode, allow adding more attachments via the separate button
     if (addAttachmentsSection) addAttachmentsSection.style.display = 'block';
 
+    const historySection = document.getElementById('historySection');
+    if (historySection) {
+        historySection.style.display = 'block';
+        fetchTicketHistory(ticket.id);
+    }
+
     document.getElementById('ticketModal').classList.add('active');
+}
+
+async function fetchTicketHistory(ticketId) {
+    const token = localStorage.getItem('token');
+    const display = document.getElementById('historyDisplay');
+    if (!display) return;
+    
+    display.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.875rem;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading history...</p>';
+
+    try {
+        const response = await fetch(`${API_URL}/tickets/${ticketId}/history`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            renderTicketHistory(data.history || []);
+        } else {
+            display.innerHTML = '<p style="color: var(--danger); font-size: 0.875rem;">Failed to load history.</p>';
+        }
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        display.innerHTML = '<p style="color: var(--danger); font-size: 0.875rem;">Network error.</p>';
+    }
+}
+
+function renderTicketHistory(history) {
+    const display = document.getElementById('historyDisplay');
+    if (!display) return;
+
+    if (history.length === 0) {
+        display.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.875rem;">No activity recorded for this ticket.</p>';
+        return;
+    }
+
+    let html = '';
+    history.forEach(entry => {
+        let icon = '<i class="fa-solid fa-clock-rotate-left"></i>';
+        let color = 'var(--text-secondary)';
+        
+        if (entry.action === 'STATUS_CHANGED') {
+            icon = '<i class="fa-solid fa-arrows-rotate"></i>';
+            color = 'var(--accent-primary)';
+        } else if (entry.action === 'ASSIGNED') {
+            icon = '<i class="fa-solid fa-user-check"></i>';
+            color = 'var(--success)';
+        } else if (entry.action === 'UNASSIGNED') {
+            icon = '<i class="fa-solid fa-user-minus"></i>';
+            color = 'var(--warning)';
+        }
+
+        html += `
+            <div style="display: flex; gap: 1rem; align-items: flex-start; padding-bottom: 0.75rem; border-bottom: 1px solid var(--glass-border);">
+                <div style="color: ${color}; font-size: 1.25rem; margin-top: 0.25rem;">
+                    ${icon}
+                </div>
+                <div style="flex: 1;">
+                    <p style="margin-bottom: 0.25rem; font-size: 0.9rem; color: var(--text-primary);">
+                        <strong style="color: var(--text-secondary);">${escapeHTML(entry.username || 'System')}</strong> 
+                        ${escapeHTML(entry.details)}
+                    </p>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);">${formatDate(entry.created_at)}</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    display.innerHTML = html;
 }
 
 // Render a list of attachment items with view/delete controls
@@ -526,6 +669,8 @@ function openCreateModal() {
     if (newAttachmentSection) newAttachmentSection.style.display = 'block';
     const addAttachmentsSection = document.getElementById('addAttachmentsSection');
     if (addAttachmentsSection) addAttachmentsSection.style.display = 'none';
+    const historySection = document.getElementById('historySection');
+    if (historySection) historySection.style.display = 'none';
 
     document.getElementById('ticketModal').classList.add('active');
 }
@@ -892,6 +1037,180 @@ if (passwordForm) {
         } catch (error) {
             console.error('Password change error:', error);
             showAlert('passwordAlert', 'Network error. Please try again.', 'error');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+}
+
+// ---------------------------------------------------------
+// User Management Logic
+// ---------------------------------------------------------
+
+async function openUserManagementModal() {
+    document.getElementById('userManagementModal').classList.add('active');
+    await fetchAdminUsers();
+    renderUsersTable();
+}
+
+function closeUserManagementModal() {
+    document.getElementById('userManagementModal').classList.remove('active');
+}
+
+function renderUsersTable() {
+    const tbody = document.getElementById('usersTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    adminUsers.forEach(user => {
+        const isActive = user.is_active !== 0; // default to true if undefined
+        const statusBadge = isActive 
+            ? `<span class="badge badge-resolved">Active</span>` 
+            : `<span class="badge badge-open">Deactivated</span>`;
+            
+        const actions = isActive ? `
+            <button class="btn btn-secondary btn-sm" onclick="openAdminResetPasswordModal(${user.id}, '${escapeHTML(user.username)}')">Reset Password</button>
+            <button class="btn btn-secondary btn-sm" style="border-color: var(--danger); color: var(--danger);" onclick="deactivateUser(${user.id})">Deactivate</button>
+        ` : '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${user.id}</td>
+            <td>${escapeHTML(user.username)}</td>
+            <td><span class="badge badge-medium" style="text-transform: capitalize;">${user.role}</span></td>
+            <td>${statusBadge}</td>
+            <td style="display: flex; gap: 0.5rem;">${actions}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function openAddUserModal() {
+    document.getElementById('addUserForm').reset();
+    document.getElementById('addUserModal').classList.add('active');
+}
+
+function closeAddUserModal() {
+    document.getElementById('addUserModal').classList.remove('active');
+}
+
+const addUserForm = document.getElementById('addUserForm');
+if (addUserForm) {
+    addUserForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('newUsername').value;
+        const password = document.getElementById('newUserPassword').value;
+        const role = document.getElementById('newUserRole').value;
+        
+        const token = localStorage.getItem('token');
+        const btn = document.getElementById('saveNewUserBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(`${API_URL}/auth/users`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ username, password, role })
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                closeAddUserModal();
+                showAlert('userManagementAlert', 'User created successfully', 'success');
+                await fetchAdminUsers();
+                renderUsersTable();
+                
+                // also refresh main ticket view if needed so the new user appears in assignments
+                fetchTickets(currentPage, true);
+            } else {
+                showAlert('addUserAlert', result.error || 'Failed to create user', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating user:', error);
+            showAlert('addUserAlert', 'Network error.', 'error');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+}
+
+async function deactivateUser(userId) {
+    if (!confirm('Are you sure you want to deactivate this user? They will no longer be able to log in.')) return;
+    
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/auth/users/${userId}/deactivate`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            showAlert('userManagementAlert', 'User deactivated successfully', 'success');
+            await fetchAdminUsers();
+            renderUsersTable();
+        } else {
+            showAlert('userManagementAlert', result.error || 'Failed to deactivate user', 'error');
+        }
+    } catch (error) {
+        console.error('Error deactivating user:', error);
+        showAlert('userManagementAlert', 'Network error.', 'error');
+    }
+}
+
+function openAdminResetPasswordModal(id, username) {
+    document.getElementById('adminResetForm').reset();
+    document.getElementById('resetUserId').value = id;
+    document.getElementById('resetUsernameDisplay').textContent = username;
+    document.getElementById('adminResetPasswordModal').classList.add('active');
+}
+
+function closeAdminResetPasswordModal() {
+    document.getElementById('adminResetPasswordModal').classList.remove('active');
+}
+
+const adminResetForm = document.getElementById('adminResetForm');
+if (adminResetForm) {
+    adminResetForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const userId = document.getElementById('resetUserId').value;
+        const newPassword = document.getElementById('adminNewPassword').value;
+        
+        const token = localStorage.getItem('token');
+        const btn = document.getElementById('adminResetBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Resetting...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(`${API_URL}/auth/users/${userId}/reset-password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ newPassword })
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                closeAdminResetPasswordModal();
+                showAlert('userManagementAlert', 'Password reset successfully', 'success');
+            } else {
+                showAlert('adminResetAlert', result.error || 'Failed to reset password', 'error');
+            }
+        } catch (error) {
+            console.error('Error resetting password:', error);
+            showAlert('adminResetAlert', 'Network error.', 'error');
         } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;

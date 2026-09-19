@@ -126,6 +126,17 @@ const authenticate = (req, res, next) => {
     });
 };
 
+const logTicketActivity = async (ticketId, userId, action, details) => {
+    try {
+        await db.execute(
+            'INSERT INTO ticket_history (ticket_id, user_id, action, details) VALUES (?, ?, ?, ?)',
+            [ticketId, userId, action, details]
+        );
+    } catch (error) {
+        console.error('Error logging ticket activity:', error);
+    }
+};
+
 // User Form: Submit a ticket (Allow multiple attachments, up to 5)
 router.post('/', upload.array('attachments', 5), async (req, res) => {
     const { name, email, department, title, description, priority, status } = req.body;
@@ -201,8 +212,25 @@ router.get('/', authenticate, async (req, res) => {
 
         if (search) {
             const like = `%${search}%`;
-            where = `WHERE id LIKE ? OR name LIKE ? OR email LIKE ? OR department LIKE ? OR title LIKE ? OR description LIKE ? OR priority LIKE ? OR status LIKE ?`;
+            where = `WHERE (id LIKE ? OR name LIKE ? OR email LIKE ? OR department LIKE ? OR title LIKE ? OR description LIKE ? OR priority LIKE ? OR status LIKE ?)`;
             params.push(like, like, like, like, like, like, like, like);
+        }
+
+        const filter = req.query.filter;
+        if (filter === 'my_tickets') {
+            const userId = req.user.id;
+            if (where) {
+                where += ' AND assigned_to = ?';
+            } else {
+                where = 'WHERE assigned_to = ?';
+            }
+            params.push(userId);
+        } else if (filter === 'unassigned') {
+            if (where) {
+                where += ' AND assigned_to IS NULL';
+            } else {
+                where = 'WHERE assigned_to IS NULL';
+            }
         }
 
         const [countRows] = await db.execute(
@@ -249,14 +277,50 @@ router.put('/:id', authenticate, async (req, res) => {
     }
 
     try {
+        const [existing] = await db.execute('SELECT status FROM tickets WHERE id = ?', [id]);
+        if (existing.length === 0) return res.status(404).json({ success: false, error: 'Ticket not found' });
+        
+        const oldStatus = existing[0].status;
+
         const [result] = await db.execute(
             'UPDATE tickets SET name = ?, department = ?, title = ?, description = ?, priority = ?, status = ? WHERE id = ?',
             [name, department, title, description, priority, status, id]
         );
-        if (result.affectedRows === 0) return res.status(404).json({ success: false, error: 'Ticket not found' });
+        
+        if (oldStatus !== status) {
+            await logTicketActivity(id, req.user.id, 'STATUS_CHANGED', `Status changed from '${oldStatus}' to '${status}'`);
+        }
+        
         res.json({ success: true, message: 'Ticket updated' });
     } catch (error) {
         console.error('Error updating ticket:', error);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// Admin Dashboard: Assign ticket to user
+router.patch('/:id/assign', authenticate, async (req, res) => {
+    const { id } = req.params;
+    const { assigned_to } = req.body;
+
+    try {
+        const [result] = await db.execute(
+            'UPDATE tickets SET assigned_to = ? WHERE id = ?',
+            [assigned_to || null, id]
+        );
+        if (result.affectedRows === 0) return res.status(404).json({ success: false, error: 'Ticket not found' });
+        
+        if (assigned_to) {
+            const [userRow] = await db.execute('SELECT username FROM users WHERE id = ?', [assigned_to]);
+            const username = userRow.length > 0 ? userRow[0].username : 'Unknown';
+            await logTicketActivity(id, req.user.id, 'ASSIGNED', `Assigned to user '${username}'`);
+        } else {
+            await logTicketActivity(id, req.user.id, 'UNASSIGNED', `Ticket unassigned`);
+        }
+
+        res.json({ success: true, message: 'Ticket assignment updated' });
+    } catch (error) {
+        console.error('Error assigning ticket:', error);
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
@@ -311,6 +375,26 @@ router.delete('/:id', authenticate, async (req, res) => {
         res.json({ success: true, message: 'Ticket deleted' });
     } catch (error) {
         console.error('Error deleting ticket:', error);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// Admin Dashboard: Get ticket history
+router.get('/:id/history', authenticate, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [rows] = await db.execute(
+            `SELECT th.id, th.action, th.details, th.created_at, u.username
+             FROM ticket_history th
+             LEFT JOIN users u ON th.user_id = u.id
+             WHERE th.ticket_id = ?
+             ORDER BY th.created_at DESC`,
+            [id]
+        );
+        res.json({ success: true, history: rows });
+    } catch (error) {
+        console.error('Error fetching ticket history:', error);
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });

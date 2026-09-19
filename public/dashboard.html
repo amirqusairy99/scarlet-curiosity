@@ -21,6 +21,9 @@
                     <i class="fa-solid fa-moon"></i>
                 </button>
                 <span style="color: var(--text-secondary); font-size: 0.875rem;">Welcome, Administrator</span>
+                <button class="btn btn-secondary btn-sm" id="userManagementBtn" onclick="openUserManagementModal()" style="display: none;">
+                    <i class="fa-solid fa-users" style="margin-right: 0.5rem;"></i> Users
+                </button>
                 <button class="btn btn-secondary btn-sm" onclick="openPasswordModal()">
                     <i class="fa-solid fa-key" style="margin-right: 0.5rem;"></i> Change Password
                 </button>
@@ -56,6 +59,12 @@
             <button class="btn btn-secondary btn-sm" onclick="clearSearch()" id="clearSearchBtn" style="display: none;">
                 <i class="fa-solid fa-xmark" style="margin-right: 0.4rem;"></i> Clear
             </button>
+        </div>
+
+        <div class="filter-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+            <button class="btn btn-secondary btn-sm filter-btn active" data-filter="all">All Tickets</button>
+            <button class="btn btn-secondary btn-sm filter-btn" data-filter="my_tickets">My Tickets</button>
+            <button class="btn btn-secondary btn-sm filter-btn" data-filter="unassigned">Unassigned</button>
         </div>
 
         <div class="summary-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
@@ -99,6 +108,7 @@
                         <th>Issue Description</th>
                         <th>Priority</th>
                         <th>Status</th>
+                        <th>Assigned To</th>
                         <th>Submitted</th>
                         <th>Action</th>
                     </tr>
@@ -204,6 +214,13 @@
                     </button>
                 </div>
 
+                <div id="historySection" style="display: none; margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+                    <h3 style="font-size: 1rem; margin-bottom: 1rem;">Activity Log</h3>
+                    <div id="historyDisplay" style="max-height: 200px; overflow-y: auto; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                        <!-- History items will be inserted here -->
+                    </div>
+                </div>
+
                 <div
                     style="margin-top: 2.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
                     <button type="button" id="deleteBtn" class="btn btn-secondary"
@@ -298,12 +315,118 @@
         </div>
     </div>
 
-    <script src="js/main.js?v=5"></script>
+    <!-- User Management Modal -->
+    <div id="userManagementModal" class="modal-overlay">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>User Management</h2>
+                <button class="modal-close" onclick="closeUserManagementModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="userManagementAlert" class="alert"></div>
+            
+            <div style="margin-bottom: 1rem; display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">
+                    <i class="fa-solid fa-plus" style="margin-right: 0.5rem;"></i> Add New MIS User
+                </button>
+            </div>
+
+            <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <!-- Users loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add New User Modal -->
+    <div id="addUserModal" class="modal-overlay" style="z-index: 1001;">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Add New MIS User</h2>
+                <button class="modal-close" onclick="closeAddUserModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="addUserAlert" class="alert"></div>
+            <form id="addUserForm">
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserPassword">Password</label>
+                    <input type="password" id="newUserPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserRole">Role</label>
+                    <select id="newUserRole" required>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddUserModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveNewUserBtn">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal (Admin) -->
+    <div id="adminResetPasswordModal" class="modal-overlay" style="z-index: 1001;">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Reset User Password</h2>
+                <button class="modal-close" onclick="closeAdminResetPasswordModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="adminResetAlert" class="alert"></div>
+            <form id="adminResetForm">
+                <input type="hidden" id="resetUserId">
+                <div class="form-group">
+                    <label>Resetting password for: <strong id="resetUsernameDisplay"></strong></label>
+                </div>
+                <div class="form-group">
+                    <label for="adminNewPassword">New Password</label>
+                    <input type="password" id="adminNewPassword" required>
+                </div>
+                <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAdminResetPasswordModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="adminResetBtn">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/main.js?v=6"></script>
     <script>
         // Specific logic for dashboard
         if (!localStorage.getItem('token')) {
             window.location.href = 'login.html';
         } else {
+            // Check if admin to show users button
+            try {
+                const token = localStorage.getItem('token');
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.role === 'admin') {
+                    document.getElementById('userManagementBtn').style.display = 'inline-block';
+                }
+            } catch(e) {}
+
             fetchTickets(1);
         }
     </script>
