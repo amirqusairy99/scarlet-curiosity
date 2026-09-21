@@ -2,7 +2,7 @@
 const initTheme = () => {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
+
     if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
         document.documentElement.setAttribute('data-theme', 'dark');
         updateThemeIcon('dark');
@@ -357,7 +357,7 @@ function renderTickets(tickets) {
         let priorityClass = 'badge-medium';
         if (ticket.priority === 'High') priorityClass = 'badge-high';
         else if (ticket.priority === 'Low') priorityClass = 'badge-low';
-        
+
         let usersOptions = `<option value="">Unassigned</option>`;
         adminUsers.forEach(u => {
             const selected = ticket.assigned_to === u.id ? 'selected' : '';
@@ -438,17 +438,17 @@ document.addEventListener('click', (e) => {
 async function assignTicket(ticketId, userId) {
     const token = localStorage.getItem('token');
     if (!token) return;
-    
+
     try {
         const response = await fetch(`${API_URL}/tickets/${ticketId}/assign`, {
             method: 'PATCH',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({ assigned_to: userId || null })
         });
-        
+
         if (response.ok) {
             showAlert('dashboardAlert', 'Ticket assigned successfully', 'success');
         } else {
@@ -514,14 +514,14 @@ async function fetchTicketHistory(ticketId) {
     const token = localStorage.getItem('token');
     const display = document.getElementById('historyDisplay');
     if (!display) return;
-    
+
     display.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.875rem;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading history...</p>';
 
     try {
         const response = await fetch(`${API_URL}/tickets/${ticketId}/history`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
+
         if (response.ok) {
             const data = await response.json();
             renderTicketHistory(data.history || []);
@@ -547,7 +547,7 @@ function renderTicketHistory(history) {
     history.forEach(entry => {
         let icon = '<i class="fa-solid fa-clock-rotate-left"></i>';
         let color = 'var(--text-secondary)';
-        
+
         if (entry.action === 'STATUS_CHANGED') {
             icon = '<i class="fa-solid fa-arrows-rotate"></i>';
             color = 'var(--accent-primary)';
@@ -574,7 +574,7 @@ function renderTicketHistory(history) {
             </div>
         `;
     });
-    
+
     display.innerHTML = html;
 }
 
@@ -687,7 +687,7 @@ if (modalForm) {
         e.preventDefault();
         const token = localStorage.getItem('token');
         const url = isEditMode ? `${API_URL}/tickets/${currentTicketId}` : `${API_URL}/tickets`;
-        
+
         let fetchOptions = {};
 
         if (isEditMode) {
@@ -848,7 +848,15 @@ function utcToLocalInputValue(utcString) {
 
 function formatReminderDate(utcString) {
     if (!utcString) return '';
-    return new Date(utcString.replace(' ', 'T') + 'Z').toLocaleString();
+
+    // Check if it already contains 'T' (meaning it's likely already an ISO string)
+    let parsedString = utcString;
+    if (!parsedString.includes('T')) {
+        // Only transform it if it's a standard SQL "YYYY-MM-DD HH:MM:SS" format
+        parsedString = parsedString.replace(' ', 'T') + 'Z';
+    }
+
+    return new Date(parsedString).toLocaleString();
 }
 
 function openReminderModal(ticket) {
@@ -1001,11 +1009,11 @@ const passwordForm = document.getElementById('passwordForm');
 if (passwordForm) {
     passwordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const currentPassword = document.getElementById('currentPassword').value;
         const newPassword = document.getElementById('newPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
-        
+
         if (newPassword !== confirmPassword) {
             showAlert('passwordAlert', 'New passwords do not match', 'error');
             return;
@@ -1061,14 +1069,14 @@ function closeUserManagementModal() {
 function renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
     adminUsers.forEach(user => {
         const isActive = user.is_active !== 0; // default to true if undefined
-        const statusBadge = isActive 
-            ? `<span class="badge badge-resolved">Active</span>` 
+        const statusBadge = isActive
+            ? `<span class="badge badge-resolved">Active</span>`
             : `<span class="badge badge-open">Deactivated</span>`;
-            
+
         const actions = isActive ? `
             <button class="btn btn-secondary btn-sm" onclick="openAdminResetPasswordModal(${user.id}, '${escapeHTML(user.username)}')">Reset Password</button>
             <button class="btn btn-secondary btn-sm" style="border-color: var(--danger); color: var(--danger);" onclick="deactivateUser(${user.id})">Deactivate</button>
@@ -1099,11 +1107,11 @@ const addUserForm = document.getElementById('addUserForm');
 if (addUserForm) {
     addUserForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const username = document.getElementById('newUsername').value;
         const password = document.getElementById('newUserPassword').value;
         const role = document.getElementById('newUserRole').value;
-        
+
         const token = localStorage.getItem('token');
         const btn = document.getElementById('saveNewUserBtn');
         const originalText = btn.innerHTML;
@@ -1126,7 +1134,7 @@ if (addUserForm) {
                 showAlert('userManagementAlert', 'User created successfully', 'success');
                 await fetchAdminUsers();
                 renderUsersTable();
-                
+
                 // also refresh main ticket view if needed so the new user appears in assignments
                 fetchTickets(currentPage, true);
             } else {
@@ -1144,14 +1152,14 @@ if (addUserForm) {
 
 async function deactivateUser(userId) {
     if (!confirm('Are you sure you want to deactivate this user? They will no longer be able to log in.')) return;
-    
+
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/auth/users/${userId}/deactivate`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
+
         const result = await response.json();
         if (response.ok) {
             showAlert('userManagementAlert', 'User deactivated successfully', 'success');
@@ -1181,10 +1189,10 @@ const adminResetForm = document.getElementById('adminResetForm');
 if (adminResetForm) {
     adminResetForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const userId = document.getElementById('resetUserId').value;
         const newPassword = document.getElementById('adminNewPassword').value;
-        
+
         const token = localStorage.getItem('token');
         const btn = document.getElementById('adminResetBtn');
         const originalText = btn.innerHTML;
