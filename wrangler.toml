@@ -1,0 +1,22 @@
+name = "scarlet-curiosity"
+pages_build_output_dir = "public"
+compatibility_date = "2024-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare R2 Bucket for attachments
+[[r2_buckets]]
+binding = "UPLOADS_BUCKET"
+bucket_name = "scarlet-curiosity-uploads"
+
+# Cloudflare D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "scarlet-curiosity-db"
+database_id = "scarlet-curiosity-db-id"
+
+# Default environment variables (override sensitive ones in Cloudflare Dashboard)
+[vars]
+JWT_SECRET = "scarlet_super_secret_jwt_key_change_in_production"
+# Optional email configuration (supports Resend or MailChannels)
+# RESEND_API_KEY = "re_xxxx"
+# EMAIL_FROM = "tickets@yourdomain.com"
