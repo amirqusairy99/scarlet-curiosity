@@ -1,5 +1,5 @@
-import { jsonResponse, errorResponse } from '../../../utils/response.js';
-import { sendReminderEmail } from '../../../utils/email.js';
+import { jsonResponse, errorResponse } from '../../utils/response.js';
+import { sendReminderEmail } from '../../utils/email.js';
 
 export async function onRequest(context) {
     const { request, env } = context;

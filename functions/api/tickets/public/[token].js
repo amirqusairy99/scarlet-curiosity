@@ -1,4 +1,4 @@
-import { jsonResponse, errorResponse } from '../../../../utils/response.js';
+import { jsonResponse, errorResponse } from '../../../utils/response.js';
 
 export async function onRequestGet(context) {
     const { params, env } = context;

@@ -12,7 +12,7 @@ bucket_name = "scarlet-curiosity-uploads"
 [[d1_databases]]
 binding = "DB"
 database_name = "scarlet-curiosity-db"
-database_id = "scarlet-curiosity-db-id"
+database_id = "3d8d4fa6-7ea1-4302-b5ff-63ee65a98bdc"
 
 # Default environment variables (override sensitive ones in Cloudflare Dashboard)
 [vars]
